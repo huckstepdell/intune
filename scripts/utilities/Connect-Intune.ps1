@@ -84,14 +84,14 @@ try {
         }
         
         Write-Host "✓ Successfully connected to Microsoft Graph" -ForegroundColor Green
-    }
-    
-    # Display context
-    $context = Get-MgContext -ErrorAction SilentlyContinue
-    if ($context) {
-        Write-Host "`nConnection Details:" -ForegroundColor Cyan
-        Write-Host "  Account: $($context.Account)" -ForegroundColor White
-        Write-Host "  Tenant: $($context.TenantId)" -ForegroundColor White
+        
+        # Display context (only available with Microsoft.Graph module)
+        $context = Get-MgContext -ErrorAction SilentlyContinue
+        if ($context) {
+            Write-Host "`nConnection Details:" -ForegroundColor Cyan
+            Write-Host "  Account: $($context.Account)" -ForegroundColor White
+            Write-Host "  Tenant: $($context.TenantId)" -ForegroundColor White
+        }
     }
     
 } catch {

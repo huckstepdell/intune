@@ -16,8 +16,8 @@ try {
     # Get Windows Update service
     $wuService = Get-Service -Name wuauserv -ErrorAction Stop
     
-    # Check if service is running and set to automatic
-    if ($wuService.Status -eq "Running" -and $wuService.StartType -eq "Automatic") {
+    # Check if service is running and set to automatic (including AutomaticDelayedStart)
+    if ($wuService.Status -eq "Running" -and $wuService.StartType -match "Automatic") {
         Write-Output "Windows Update service is running and set to automatic"
         exit 0  # Compliant
     } else {

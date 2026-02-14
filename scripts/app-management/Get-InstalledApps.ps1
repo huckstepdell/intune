@@ -64,12 +64,12 @@ try {
         Write-Host "Processing device: $($device.deviceName)..." -ForegroundColor Cyan
         
         try {
-            $deviceApps = Get-IntuneDeviceAppManagement_MobileApps_UserStatuses -mobileAppId $device.id | 
+            $deviceApps = Get-IntuneManagedDeviceDetectedApp -managedDeviceId $device.id | 
                          Select-Object @{Name='DeviceName';Expression={$device.deviceName}},
                                        @{Name='UserName';Expression={$device.userPrincipalName}},
                                        displayName,
                                        version,
-                                       installState
+                                       sizeInByte
             
             $allApps += $deviceApps
         } catch {

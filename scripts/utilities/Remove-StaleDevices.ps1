@@ -87,7 +87,7 @@ try {
         foreach ($device in $staleDevices) {
             try {
                 Write-Host "  Removing: $($device.deviceName) (Last sync: $($device.lastSyncDateTime))..." -ForegroundColor Cyan
-                Remove-IntuneDevice -managedDeviceId $device.id -ErrorAction Stop
+                Remove-IntuneManagedDevice -managedDeviceId $device.id -ErrorAction Stop
                 $removeCount++
                 Write-Host "    ✓ Removed successfully" -ForegroundColor Green
             } catch {
