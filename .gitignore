@@ -1,0 +1,28 @@
+# PowerShell
+*.ps1xml
+*.psm1.bak
+
+# Output files
+*.csv
+*.json
+*.xml
+*.html
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+~$*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# Reports directory (optional - uncomment if you want to track reports)
+# reports/
+# *.csv
