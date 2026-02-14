@@ -1,0 +1,2 @@
+# intune
+Intune App Scripts
