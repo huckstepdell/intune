@@ -1,0 +1,7 @@
+{
+  "name": "Microsoft Configuration Manager Support Center",
+  "downloadUrl": "",
+  "versions": {
+    "latest": "Microsoft\\MCMSupportCenter\\source\\SupportCenterInstaller.msi"
+  }
+}

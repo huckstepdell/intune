@@ -1,0 +1,8 @@
+
+{
+  "name": "Winget Package Manager",
+  "downloadUrl": "",
+  "versions": {
+    "latest": "winget\\source\\install-winget-package.ps1"
+  }
+}

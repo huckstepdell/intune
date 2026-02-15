@@ -1,0 +1,42 @@
+# Installers and binaries
+*.exe
+*.msi
+*.intunewin
+*.dll
+*.cab
+*.zip
+*.7z
+*.rar
+*.iso
+*.dmg
+*.pkg
+
+# Software license files (not our repo LICENSE)
+*license.txt
+*license.rtf
+*licence.txt
+*licence.rtf
+*EULA.txt
+*EULA.rtf
+*terms.txt
+*agreement.txt
+
+# IntuneWinAppUtil.exe (must be added by user)
+PackageGenerator/IntuneWinAppUtil.exe
+
+# Ignore everything under these folders
+installers/*
+logos/*
+
+# But keep these folders
+!installers/winget/
+!installers/winget/**
+!installers/Microsoft/
+installers/Microsoft/*
+!installers/Microsoft/RSAT/
+!installers/Microsoft/RSAT/**
+!installers/Template/
+!installers/Template/**
+
+# Exclude .intunewin packages even in winget
+installers/winget/**/*.intunewin

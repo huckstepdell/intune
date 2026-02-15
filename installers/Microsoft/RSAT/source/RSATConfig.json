@@ -1,0 +1,12 @@
+{
+  "Capabilities": [
+    "Rsat.ServerManager.Tools~~~~0.0.1.0",
+    "Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0",
+    "Rsat.CertificateServices.Tools~~~~0.0.1.0",
+    "Rsat.Dns.Tools~~~~0.0.1.0",
+    "Rsat.GroupPolicy.Management.Tools~~~~0.0.1.0"
+  ],
+  "OptionalFeatures": [
+    "IIS-WebServerManagementTools"
+  ]
+}
