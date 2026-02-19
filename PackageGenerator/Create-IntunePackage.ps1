@@ -68,7 +68,15 @@ try {
     $apps = Read-AppConfigs -ConfigDirectory $ConfigDir
 
     $appNames = $apps | ForEach-Object { $_.name }
-    $selectedAppName = Select-Option -Options $appNames -Prompt "Select an application:" -DefaultIndex 0
+
+    # Set default to Winget Package Manager if it exists
+    $defaultIndex = 0
+    $wingetIndex = $appNames.IndexOf("Winget Package Manager")
+    if ($wingetIndex -ge 0) {
+        $defaultIndex = $wingetIndex
+    }
+
+    $selectedAppName = Select-Option -Options $appNames -Prompt "Select an application:" -DefaultIndex $defaultIndex
     $appConfig = $apps | Where-Object { $_.name -eq $selectedAppName }
 
     Write-Host "Selected app: $($appConfig.name)" -ForegroundColor Green

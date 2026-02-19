@@ -74,7 +74,7 @@ The repository includes **generic winget scripts** that can install/uninstall **
 
 **In `installers\winget\`** (detection template):
 
-3. **detect-winget-package.ps1** - Template detection script for Intune
+3. **_detect-winget-package copy.ps1** - Template detection script for Intune
    - **Copy this template for each application**
    - Customize the default `PackageId` and `RequiredVersion` parameters
    - Use as custom detection script in Intune
@@ -94,10 +94,10 @@ Create the winget `.intunewin` package **one time** using PackageGenerator:
 
 #### Step 2: Customize Detection Script (Per Application)
 
-For each application you want to deploy, copy `detect-winget-package.ps1` and update the default parameter values:
+For each application you want to deploy, copy `_detect-winget-package copy.ps1` and update the default parameter values:
 
 ```powershell
-# Example: detect-git.ps1
+# Example: detect-git.git.ps1
 [CmdletBinding()]
 Param(
     [string]$PackageId       = "Git.Git",          # ← Change this
@@ -106,7 +106,7 @@ Param(
 )
 ```
 
-Save with a descriptive name (e.g., `detect-git.ps1`, `detect-powershell.ps1`).
+Save with a descriptive name matching the PackageId (e.g., `detect-git.git.ps1`, `detect-Microsoft.PowerShell.ps1`).
 
 #### Step 3: Create Win32 App in Intune (Per Application)
 
@@ -125,7 +125,7 @@ For each application:
    ```
 
 4. **Detection Method**: Use custom script
-   - Upload your app-specific customized detection script (e.g., `detect-git.ps1`)
+   - Upload your app-specific customized detection script (e.g., `detect-git.git.ps1`)
    - The script uses the default parameter values you set
    - Returns exit code 0 if detected, 1 if not detected
 
@@ -157,8 +157,8 @@ Use the **Id** column value (e.g., `Git.Git`) as the `PackageId` parameter.
 The `installers\winget\` folder contains the universal scripts, and `installers\Template\` provides a starting point for new applications.
 
 For applications deployed via winget, you would:
-1. Create a folder structure similar to `installers\Template\`
-2. Copy and customize the `detect-winget-package.ps1` template
+1. Create a folder structure similar to `installers\Template\` (optional - mainly needed if you have additional files)
+2. Copy and customize the `_detect-winget-package copy.ps1` template
 3. Use the generic winget `.intunewin` package with customized commands
 
 ### Advantages

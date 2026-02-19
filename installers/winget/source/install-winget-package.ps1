@@ -41,9 +41,34 @@ $LogFileName = $LogFileName -replace '[\\/:*?"<>|]', '_'
 $LogFile = Join-Path $LogFolder $LogFileName
 
 function Write-Log {
-    param([string]$Message)
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$timestamp`t$Message" | Out-File -FilePath $LogFile -Append -Encoding utf8
+    param(
+        [string]$Message,
+        [ValidateSet('Info', 'Warning', 'Error')]
+        [string]$Level = 'Info'
+    )
+
+    # Map log levels to CMTrace format: 1=Info, 2=Warning, 3=Error
+    $logLevel = switch ($Level) {
+        'Info'    { 1 }
+        'Warning' { 2 }
+        'Error'   { 3 }
+        default   { 1 }
+    }
+
+    # Get caller info
+    $component = Split-Path -Leaf $MyInvocation.ScriptName
+
+    # Build timestamp in CMTrace format
+    $time = Get-Date -Format "HH:mm:ss.fff"
+    $date = Get-Date -Format "MM-dd-yyyy"
+    $timeZoneBias = [System.TimeZoneInfo]::Local.GetUtcOffset((Get-Date)).TotalMinutes
+    $timeZoneString = "{0:+000;-000}" -f $timeZoneBias
+
+    # Build CMTrace/OneTrace format log line
+    $logLine = "<![LOG[$Message]LOG]!><time=`"$time$timeZoneString`" date=`"$date`" component=`"$component`" context=`"`" type=`"$logLevel`" thread=`"$PID`" file=`"$component`">"
+
+    # Write to log file
+    $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
 
 function Get-WingetPath {
@@ -93,13 +118,33 @@ try {
 
     $checkOutput = & $wingetPath @checkArgs 2>&1
     $installedVersion = $null
+    $updateAvailable = $false
 
     if ($checkOutput) {
         $checkLine = $checkOutput | Select-String -SimpleMatch $PackageId | Select-Object -First 1
         if ($checkLine) {
-            $tokens = $checkLine.ToString().Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
-            $installedVersion = $tokens | Where-Object { $_ -match '^\d+(\.\d+)*' } | Select-Object -Last 1
-            Write-Log "Pre-check found installed version: $installedVersion"
+            $lineText = $checkLine.ToString()
+
+            # Check for version numbers in the output
+            $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
+            $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }
+
+            if ($versions.Count -ge 2) {
+                # Two versions means: Installed and Available (update available)
+                $installedVersion = $versions[0]
+                $availableVersion = $versions[1]
+                $updateAvailable = $true
+                Write-Log "Pre-check found installed version: $installedVersion, Available version: $availableVersion"
+            }
+            elseif ($versions.Count -eq 1) {
+                # One version means: Installed only (no update available)
+                $installedVersion = $versions[0]
+                $updateAvailable = $false
+                Write-Log "Pre-check found installed version: $installedVersion (up to date)"
+            }
+            else {
+                Write-Log "Pre-check could not parse version from line: $lineText" -Level Warning
+            }
         }
         else {
             Write-Log "Pre-check did not find a line with PackageId."
@@ -112,10 +157,13 @@ try {
     # --- Decide what to do based on Version and installedVersion ---
 
     if ($Version -eq "Latest") {
-        # Any installed version is acceptable
-        if ($installedVersion) {
-            Write-Log "Package is already installed (version=$installedVersion) and any version is acceptable. Skipping install."
+        # Check if update is available
+        if ($installedVersion -and -not $updateAvailable) {
+            Write-Log "Package is already installed (version=$installedVersion) and is up to date. Skipping install."
             exit 0
+        }
+        elseif ($installedVersion -and $updateAvailable) {
+            Write-Log "Package is installed (version=$installedVersion) but update is available. Proceeding with upgrade."
         }
         else {
             Write-Log "Package not installed; proceeding with install of Latest."

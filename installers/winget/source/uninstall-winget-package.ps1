@@ -37,9 +37,34 @@ $LogFileName = $LogFileName -replace '[\\/:*?"<>|]', '_'
 $LogFile = Join-Path $LogFolder $LogFileName
 
 function Write-Log {
-    param([string]$Message)
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    "$timestamp`t$Message" | Out-File -FilePath $LogFile -Append -Encoding utf8
+    param(
+        [string]$Message,
+        [ValidateSet('Info', 'Warning', 'Error')]
+        [string]$Level = 'Info'
+    )
+
+    # Map log levels to CMTrace format: 1=Info, 2=Warning, 3=Error
+    $logLevel = switch ($Level) {
+        'Info'    { 1 }
+        'Warning' { 2 }
+        'Error'   { 3 }
+        default   { 1 }
+    }
+
+    # Get caller info
+    $component = Split-Path -Leaf $MyInvocation.ScriptName
+
+    # Build timestamp in CMTrace format
+    $time = Get-Date -Format "HH:mm:ss.fff"
+    $date = Get-Date -Format "MM-dd-yyyy"
+    $timeZoneBias = [System.TimeZoneInfo]::Local.GetUtcOffset((Get-Date)).TotalMinutes
+    $timeZoneString = "{0:+000;-000}" -f $timeZoneBias
+
+    # Build CMTrace/OneTrace format log line
+    $logLine = "<![LOG[$Message]LOG]!><time=`"$time$timeZoneString`" date=`"$date`" component=`"$component`" context=`"`" type=`"$logLevel`" thread=`"$PID`" file=`"$component`">"
+
+    # Write to log file
+    $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
 
 try {
