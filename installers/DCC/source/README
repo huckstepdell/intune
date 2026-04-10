@@ -1,0 +1,2 @@
+msiexec.exe /i Command_Configure.msi /qn /l*v 'c:\windows\logs\software\DCC_installer.log'
+MsiExec.exe /X {9164C030-21C5-4A88-B547-7018366CDF55} /qn
