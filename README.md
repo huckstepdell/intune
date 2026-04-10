@@ -43,7 +43,7 @@ intune\
 
 1. **Clone this repository**
 2. **Download required installers** from official sources and place in appropriate folders (or use the generic winget scripts)
-3. **Add IntuneWinAppUtil.exe** to the PackageGenerator folder ([download here](https://github.com/Microsoft/Microsoft-Win32-Content-Prep-Tool))
+3. **Add IntuneWinAppUtil.exe** to the PackageGenerator folder ([download here](https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/releases))
 4. **Review PackageGenerator documentation** at [PackageGenerator/README.md](PackageGenerator/README.md)
 5. **Run the packaging script** to create Intune packages
 

@@ -15,7 +15,7 @@
 [CmdletBinding()]
 Param(
     # Set these defaults per app when you copy this script
-    [string]$PackageId       = "Git.Git",
+    [string]$PackageId       = "Logitech.OptionsPlus",
     [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget"
 )

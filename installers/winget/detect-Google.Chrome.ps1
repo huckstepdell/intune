@@ -15,7 +15,7 @@
 [CmdletBinding()]
 Param(
     # Set these defaults per app when you copy this script
-    [string]$PackageId       = "Git.Git",
+    [string]$PackageId       = "Google.Chrome",
     [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget"
 )

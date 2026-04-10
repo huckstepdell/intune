@@ -15,7 +15,7 @@
 [CmdletBinding()]
 Param(
     # Set these defaults per app when you copy this script
-    [string]$PackageId       = "Git.Git",
+    [string]$PackageId       = "Python.Python.3.14",
     [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget"
 )
@@ -51,8 +51,7 @@ function Write-Log {
         default   { 1 }
     }
 
-    # Get caller info
-    $callerInfo = (Get-PSCallStack)[1]
+    # Component name for CMTrace log entries
     $component = Split-Path -Leaf $MyInvocation.ScriptName
 
     # Build timestamp in CMTrace format
@@ -147,9 +146,6 @@ try {
 
         # Check if there's an "Available" version (indicates update is available)
         # Format: "Name    Id    Version Available Source"
-        # Split by whitespace and look for version patterns
-        $tokens = $lineText -split '\s+' | Where-Object { $_ }
-
         # Try to find two version numbers in the line (installed and available)
         $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
         $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }

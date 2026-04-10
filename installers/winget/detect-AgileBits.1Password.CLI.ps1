@@ -15,7 +15,7 @@
 [CmdletBinding()]
 Param(
     # Set these defaults per app when you copy this script
-    [string]$PackageId       = "Git.Git",
+    [string]$PackageId       = "AgileBits.1Password.CLI",
     [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget"
 )
@@ -51,8 +51,7 @@ function Write-Log {
         default   { 1 }
     }
 
-    # Get caller info
-    $callerInfo = (Get-PSCallStack)[1]
+    # Component name for CMTrace log entries
     $component = Split-Path -Leaf $MyInvocation.ScriptName
 
     # Build timestamp in CMTrace format
@@ -145,21 +144,17 @@ try {
         $lineText = $line.ToString()
         Write-Log "Found package line: $lineText"
 
-        # Check if there's an "Available" version (indicates update is available)
-        # Format: "Name    Id    Version Available Source"
-        # Split by whitespace and look for version patterns
-        $tokens = $lineText -split '\s+' | Where-Object { $_ }
-
-        # Try to find two version numbers in the line (installed and available)
+        # For RequiredVersion=Latest, if the package is installed, consider it detected.
+        # The install script will handle upgrades if needed.
+        # Note: winget may show stale update indicators due to metadata caching.
         $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
         $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }
 
-        if ($versions.Count -ge 2) {
-            Write-Log "Update available: Installed=$($versions[0]), Available=$($versions[1])" -Level Warning
-            exit 1
-        }
-        elseif ($versions.Count -eq 1) {
-            Write-Log "Package is installed with version $($versions[0]) and is up to date (no Available column)."
+        if ($versions.Count -ge 1) {
+            Write-Log "Package is installed (any version acceptable for RequiredVersion=Latest)."
+            if ($versions.Count -ge 2) {
+                Write-Log "Note: winget shows update available indicator, but this may be stale metadata."
+            }
             Write-Output "Detected"
             exit 0
         }

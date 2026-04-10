@@ -81,6 +81,7 @@ try {
     $arguments = @(
         "uninstall",
         "--id", $PackageId,
+        "--exact",
         "--silent",
         "--accept-package-agreements",
         "--accept-source-agreements",

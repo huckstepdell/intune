@@ -12,6 +12,12 @@
           * If a different version is installed, uninstall it, then install the required version.
           * If not installed, install the required version.
 
+    Exit Code Handling:
+      - 0: Success
+      - 0x8A15002B: Success (no applicable update - package already at correct version)
+        Note: This can occur due to winget metadata caching where 'winget list' shows
+        an update available but 'winget upgrade' finds nothing to do.
+
     Logs to: C:\Windows\Logs\Software\<PackageId>-<Version>-install.log
 #>
 
@@ -96,6 +102,33 @@ function Get-WingetPath {
     return $null
 }
 
+function Get-WingetErrorHint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode
+    )
+
+    $hexCode = "0x{0:X8}" -f ($ExitCode -band 0xFFFFFFFF)
+    $hint = switch ($hexCode) {
+        "0x8A150014" { "No package found matching input criteria (check --id value and source)." }
+        "0x8A15002B" { "No applicable update found (package already at correct version)." }
+        default { "See winget logs and stderr output for details." }
+    }
+
+    return "$hexCode - $hint"
+}
+
+function Test-WingetSuccessCode {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode
+    )
+
+    # Treat these exit codes as success
+    $hexCode = "0x{0:X8}" -f ($ExitCode -band 0xFFFFFFFF)
+    return ($ExitCode -eq 0) -or ($hexCode -eq "0x8A15002B")
+}
+
 try {
     Write-Log "Starting Winget install. PackageId=$PackageId Version=$Version"
 
@@ -113,6 +146,7 @@ try {
     $checkArgs = @(
         "list",
         "--id", $PackageId,
+        "--exact",
         "--accept-source-agreements"
     )
 
@@ -124,10 +158,25 @@ try {
         $checkLine = $checkOutput | Select-String -SimpleMatch $PackageId | Select-Object -First 1
         if ($checkLine) {
             $lineText = $checkLine.ToString()
+            Write-Log "Pre-check matched line: $lineText"
 
-            # Check for version numbers in the output
+            # Remove the ">" symbol if present (indicates update available)
+            $cleanedLine = $lineText -replace '>\s*', ''
+
+            # Check for version numbers in the output, requiring at least major.minor format
             $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
-            $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }
+            $versions = [regex]::Matches($cleanedLine, $versionPattern) | ForEach-Object { $_.Value }
+
+            # Filter out any versions that look like they're from the app name (e.g., "1Password 8")
+            # by preferring versions after the PackageId column
+            $idIndex = $cleanedLine.IndexOf($PackageId)
+            if ($idIndex -ge 0) {
+                $afterId = $cleanedLine.Substring($idIndex + $PackageId.Length)
+                $versionsAfterId = [regex]::Matches($afterId, $versionPattern) | ForEach-Object { $_.Value }
+                if ($versionsAfterId.Count -gt 0) {
+                    $versions = $versionsAfterId
+                }
+            }
 
             if ($versions.Count -ge 2) {
                 # Two versions means: Installed and Available (update available)
@@ -137,10 +186,17 @@ try {
                 Write-Log "Pre-check found installed version: $installedVersion, Available version: $availableVersion"
             }
             elseif ($versions.Count -eq 1) {
-                # One version means: Installed only (no update available)
+                # One version means: Installed only
                 $installedVersion = $versions[0]
-                $updateAvailable = $false
-                Write-Log "Pre-check found installed version: $installedVersion (up to date)"
+                # Check if the original line had ">" which indicates update available
+                if ($lineText -match '>') {
+                    $updateAvailable = $true
+                    Write-Log "Pre-check found installed version: $installedVersion (update available, indicated by >)"
+                }
+                else {
+                    $updateAvailable = $false
+                    Write-Log "Pre-check found installed version: $installedVersion (up to date)"
+                }
             }
             else {
                 Write-Log "Pre-check could not parse version from line: $lineText" -Level Warning
@@ -163,7 +219,8 @@ try {
             exit 0
         }
         elseif ($installedVersion -and $updateAvailable) {
-            Write-Log "Package is installed (version=$installedVersion) but update is available. Proceeding with upgrade."
+            Write-Log "Package is installed (version=$installedVersion) but update appears available. Proceeding with upgrade."
+            Write-Log "Note: If upgrade returns 'no applicable update', this may be due to winget metadata caching."
         }
         else {
             Write-Log "Package not installed; proceeding with install of Latest."
@@ -181,6 +238,7 @@ try {
             $uninstallArgs = @(
                 "uninstall",
                 "--id", $PackageId,
+                "--exact",
                 "--silent",
                 "--accept-package-agreements",
                 "--accept-source-agreements",
@@ -214,6 +272,7 @@ try {
     $installArgs = @(
         "install",
         "--id", $PackageId,
+        "--exact",
         "--silent",
         "--accept-package-agreements",
         "--accept-source-agreements",
@@ -240,14 +299,20 @@ try {
 
     Write-Log "winget install exit code: $($installProcess.ExitCode)"
 
-    if ($installProcess.ExitCode -ne 0) {
-        throw "winget install failed with exit code $($installProcess.ExitCode)"
+    if (-not (Test-WingetSuccessCode -ExitCode $installProcess.ExitCode)) {
+        $errorHint = Get-WingetErrorHint -ExitCode $installProcess.ExitCode
+        throw "winget install failed with exit code $($installProcess.ExitCode) ($errorHint)"
     }
 
-    Write-Log "Install completed successfully."
+    $hexCode = "0x{0:X8}" -f ($installProcess.ExitCode -band 0xFFFFFFFF)
+    if ($hexCode -eq "0x8A15002B") {
+        Write-Log "Install completed successfully (package already at correct version)."
+    } else {
+        Write-Log "Install completed successfully."
+    }
     exit 0
 }
 catch {
-    Write-Log "Error during install: $($_.Exception.Message)"
+    Write-Log "Error during install: $($_.Exception.Message)" -Level Error
     exit 1
 }

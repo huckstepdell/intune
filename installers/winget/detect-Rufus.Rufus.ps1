@@ -16,7 +16,7 @@
 Param(
     # Set these defaults per app when you copy this script
     [string]$PackageId       = "Rufus.Rufus",
-    [string]$RequiredVersion = "4.12",
+    [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget"
 )
 

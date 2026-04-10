@@ -1,0 +1,1 @@
+DellDeviceManagementAgent.SubAgent_26.03.0.816.exe /s /v"/qn GROUPTOKEN='' URL='https://device.manage.dell.com' /lv* 'c:\windows\logs\software\DDMA_installer.log'"

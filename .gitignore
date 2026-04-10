@@ -25,18 +25,20 @@
 PackageGenerator/IntuneWinAppUtil.exe
 
 # Ignore everything under these folders
-installers/*
+# installers/*
 logos/*
 
 # But keep these folders
-!installers/winget/
-!installers/winget/**
-!installers/Microsoft/
-installers/Microsoft/*
-!installers/Microsoft/RSAT/
-!installers/Microsoft/RSAT/**
-!installers/Template/
-!installers/Template/**
+# !installers/winget/
+# !installers/winget/**
+# !installers/Microsoft/RSAT/
+# !installers/Microsoft/RSAT/**
+# !installers/Template/
+# !installers/Template/**
 
 # Exclude .intunewin packages even in winget
-installers/winget/**/*.intunewin
+installers/**/*.intunewin
+installers/**/*.exe
+installers/**/*.msi
+installers/fonts/**/*.ttf
+installers/fonts/**/*.otf
