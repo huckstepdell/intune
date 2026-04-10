@@ -16,7 +16,7 @@
 Param(
     # Set these defaults per app when you copy this script
     [string]$PackageId       = "Microsoft.DotNet.DesktopRuntime.10",
-    [string]$RequiredVersion = "9.0.13",
+    [string]$RequiredVersion = "10.0.5",
     [string]$Source          = "winget"
 )
 

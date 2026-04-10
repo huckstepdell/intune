@@ -16,7 +16,7 @@
 Param(
     # Set these defaults per app when you copy this script
     [string]$PackageId       = "Microsoft.DotNet.AspNetCore.8",
-    [string]$RequiredVersion = "8.0.24",
+    [string]$RequiredVersion = "8.0.25",
     [string]$Source          = "winget"
 )
 
