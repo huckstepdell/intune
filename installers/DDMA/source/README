@@ -1,2 +1,2 @@
-DellDeviceManagementAgent.SubAgent_26.03.0.816.exe /s /v"/qn GROUPTOKEN='' URL='https://device.manage.dell.com' /lv* 'c:\windows\logs\software\DDMA_installer.log'"
+.\DellDeviceManagementAgent.SubAgent_26.03.0.816.exe /s /v"/qn GROUPTOKEN="<Place Group Token Here>" URL="https://device.manage.dell.com" /lv* "c:\windows\logs\software\DDMA_installer.log""
 msiexec /x {873C54F4-64DD-44E0-8324-AC1343DAD0F2} /qn
