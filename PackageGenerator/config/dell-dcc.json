@@ -1,0 +1,8 @@
+{
+  "name": "Dell Command | Configure",
+  "downloadUrl": "https://www.dell.com/support/product-details/en-us/product/command-configure/drivers",
+  "versions": {
+    "latest": "DCC\\source\\Command_Configure.msi"
+  }
+}
+
