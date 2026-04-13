@@ -73,21 +73,21 @@ function Compare-Versions {
         [string]$InstalledVersion,
         [string]$RequiredVersion
     )
-    
+
     # Split versions into parts, handling pre-release tags (e.g., "1.2.3-beta")
     $installedParts = ($InstalledVersion -split '-')[0] -split '\.'
     $requiredParts = ($RequiredVersion -split '-')[0] -split '\.'
-    
+
     # Pad arrays to same length
     $maxLength = [Math]::Max($installedParts.Count, $requiredParts.Count)
     while ($installedParts.Count -lt $maxLength) { $installedParts += "0" }
     while ($requiredParts.Count -lt $maxLength) { $requiredParts += "0" }
-    
+
     # Compare each part
     for ($i = 0; $i -lt $maxLength; $i++) {
         $installedNum = [int]$installedParts[$i]
         $requiredNum = [int]$requiredParts[$i]
-        
+
         if ($installedNum -gt $requiredNum) {
             return 1  # Installed is newer
         }
@@ -95,7 +95,7 @@ function Compare-Versions {
             return -1  # Installed is older
         }
     }
-    
+
     return 0  # Versions are equal
 }
 
@@ -220,7 +220,7 @@ try {
 
     # Compare versions - accept equal or newer versions
     $comparison = Compare-Versions -InstalledVersion $installedVersion -RequiredVersion $RequiredVersion
-    
+
     if ($comparison -ge 0) {
         if ($comparison -eq 0) {
             Write-Log "Installed version ($installedVersion) matches required version ($RequiredVersion). Returning detected (0)."
