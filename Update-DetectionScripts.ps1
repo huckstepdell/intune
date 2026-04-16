@@ -56,15 +56,15 @@ foreach ($file in $filesToUpdate) {
     }
 
     Write-Host "Processing $file..." -ForegroundColor Cyan
-    
+
     $content = Get-Content $filePath -Raw
-    
+
     # Check if file already has the new structure
     if ($content -match 'InstallContext|Get-UserProfiles|Test-UserContextInstallation|Invoke-SystemContextDetection') {
         Write-Host "  Skipping (already updated)" -ForegroundColor Yellow
         continue
     }
-    
+
     # 1. Extract existing parameters (keep PackageId, RequiredVersion, Source values)
     if ($content -match 'PackageId\s*=\s*"([^"]+)"') {
         $packageId = $Matches[1]
@@ -72,7 +72,7 @@ foreach ($file in $filesToUpdate) {
     if ($content -match 'RequiredVersion\s*=\s*"([^"]+)"') {
         $requiredVersion = $Matches[1]
     }
-    
+
     # 2. Replace parameters section
     $paramSection = @"
 [CmdletBinding()]
@@ -95,9 +95,9 @@ Param(
     [string[]]`$UserContextRegistryKeys = @()
 )
 "@
-    
+
     $content = $content -replace '(?s)\[CmdletBinding\(\)\][^\$]*Param\([^)]+\)', $paramSection
-    
+
     # 3. Add Compare-Versions function after Write-Log if not present
     if ($content -notmatch 'function Compare-Versions') {
         $writeLogEnd = $content.IndexOf("function Get-WingetPath {")
@@ -107,13 +107,13 @@ Param(
             $content = $beforeGet + "`n" + $compareFunction + "`n`n" + $afterGet
         }
     }
-    
+
     # 4. Add the three user-context functions after Get-WingetPath
     $getWingetEnd = $content.IndexOf("# --- Main logic ---")
     if ($getWingetEnd -gt 0) {
         $beforeMain = $content.Substring(0, $getWingetEnd)
         $afterMain = $content.Substring($getWingetEnd)
-        
+
         # Check if functions already exist
         if ($beforeMain -notmatch 'function Get-UserProfiles') {
             $beforeMain = $beforeMain.TrimEnd() + "`n`n" + $getUserProfilesFunction + "`n`n"
@@ -124,16 +124,16 @@ Param(
         if ($beforeMain -notmatch 'function Invoke-SystemContextDetection') {
             $beforeMain = $beforeMain.TrimEnd() + $invokeSystemFunction + "`n`n"
         }
-        
+
         $content = $beforeMain + $afterMain
     }
-    
+
     # 5. Replace main logic
     $mainLogicStart = $content.IndexOf("# --- Main logic ---")
     if ($mainLogicStart -gt 0) {
         $content = $content.Substring(0, $mainLogicStart) + $mainLogic
     }
-    
+
     # Save the file
     $content | Out-File -FilePath $filePath -Encoding UTF8 -NoNewline
     Write-Host "  Updated successfully" -ForegroundColor Green
