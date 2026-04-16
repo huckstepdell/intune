@@ -1,43 +1,55 @@
 <#
 .SYNOPSIS
-    Generic detection for Winget packages for Intune Win32 apps.
+    Detection for Discord (user-context installation) for Intune Win32 apps.
 
 .DESCRIPTION
     Exit codes:
       0 -> App detected and compliant
       1 -> App not detected / non-compliant
 
-    Defaults:
-      PackageId       = 'CHANGE.ME'   # e.g. 'Dell.CommandUpdate.Universal'
-      RequiredVersion = 'Latest'     # or a specific version, e.g. '5.6.0'
+    Install Context:
+      System -> Uses winget list (runs in SYSTEM context)
+      User   -> Checks user profiles via registry/filesystem for per-user installed apps
+      Auto   -> Tries System first, falls back to User detection if not found
+
+    Discord installs per-user by default to AppData\Local\Discord
 #>
 
 [CmdletBinding()]
 Param(
     # Set these defaults per app when you copy this script
-    [string]$PackageId       = "Python.Python.3.14",
+    [string]$PackageId       = "Discord.Discord",
     [string]$RequiredVersion = "Latest",
     [string]$Source          = "winget",
 
-    # Install context - determines detection method
+    # Discord installs per-user by default
     [ValidateSet('System', 'User', 'Auto')]
-    [string]$InstallContext  = "System",
+    [string]$InstallContext  = "User",
 
-    # For user-context detection: file paths to check (relative to user profile)
-    # Example: @("AppData\Local\Discord\app-*\Discord.exe")
-    [string[]]$UserContextPaths = @(),
+    # User-context detection paths
+    [string[]]$UserContextPaths = @(
+        "AppData\Local\Discord\app-*\Discord.exe",
+        "AppData\Local\Discord\Update.exe"
+    ),
 
-    # For user-context detection: registry keys to check (relative to HKCU)
-    # Example: @("Software\Discord")
-    [string[]]$UserContextRegistryKeys = @()
+    # User-context registry keys
+    [string[]]$UserContextRegistryKeys = @(
+        "Software\Discord"
+    )
 )
 
 $ErrorActionPreference = "Stop"
 
 # --- Logging setup ---
 $LogFolder = "C:\Windows\Logs\Software"
-if (-not (Test-Path $LogFolder)) {
-    New-Item -Path $LogFolder -ItemType Directory -Force | Out-Null
+try {
+    if (-not (Test-Path $LogFolder)) {
+        New-Item -Path $LogFolder -ItemType Directory -Force -ErrorAction Stop | Out-Null
+    }
+}
+catch {
+    # Fallback to temp if we can't write to Windows\Logs
+    $LogFolder = $env:TEMP
 }
 
 if ([string]::IsNullOrWhiteSpace($RequiredVersion) -or $RequiredVersion -eq "Latest") {
@@ -63,7 +75,8 @@ function Write-Log {
         default   { 1 }
     }
 
-    # Component name for CMTrace log entries
+    # Get caller info
+    $callerInfo = (Get-PSCallStack)[1]
     $component = Split-Path -Leaf $MyInvocation.ScriptName
 
     # Build timestamp in CMTrace format
@@ -76,9 +89,13 @@ function Write-Log {
     $logLine = "<![LOG[$Message]LOG]!><time=`"$time$timeZoneString`" date=`"$date`" component=`"$component`" context=`"`" type=`"$logLevel`" thread=`"$PID`" file=`"$component`">"
 
     # Write to log file
-    $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8
+    try {
+        $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8 -ErrorAction Stop
+    }
+    catch {
+        # Silently fail if we can't write logs (will work in Intune as SYSTEM)
+    }
 }
-
 
 function Compare-Versions {
     param(
@@ -175,7 +192,9 @@ function Get-UserProfiles {
     }
 
     return $profiles
-}function Test-UserContextInstallation {
+}
+
+function Test-UserContextInstallation {
     <#
     .SYNOPSIS
         Check if the app is installed in any user's profile via file/registry detection
@@ -229,7 +248,9 @@ function Get-UserProfiles {
 
     Write-Log "No user-context installation found across all profiles"
     return $false
-}function Invoke-SystemContextDetection {
+}
+
+function Invoke-SystemContextDetection {
     <#
     .SYNOPSIS
         Perform system-context detection using winget list

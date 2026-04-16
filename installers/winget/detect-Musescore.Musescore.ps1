@@ -17,7 +17,19 @@ Param(
     # Set these defaults per app when you copy this script
     [string]$PackageId       = "Musescore.Musescore",
     [string]$RequiredVersion = "Latest",
-    [string]$Source          = "winget"
+    [string]$Source          = "winget",
+
+    # Install context - determines detection method
+    [ValidateSet('System', 'User', 'Auto')]
+    [string]$InstallContext  = "System",
+
+    # For user-context detection: file paths to check (relative to user profile)
+    # Example: @("AppData\Local\Discord\app-*\Discord.exe")
+    [string[]]$UserContextPaths = @(),
+
+    # For user-context detection: registry keys to check (relative to HKCU)
+    # Example: @("Software\Discord")
+    [string[]]$UserContextRegistryKeys = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,14 +136,116 @@ function Get-WingetPath {
     return $null
 }
 
-# --- Main logic ---
-try {
-    Write-Log "=== Starting detection for PackageId=$PackageId RequiredVersion=$RequiredVersion ==="
+function Get-UserProfiles {
+    <#
+    .SYNOPSIS
+        Enumerate all user profiles on the system (excluding system accounts)
+    #>
+    $profiles = @()
+
+    # Get profiles from C:\Users
+    $userFolders = Get-ChildItem "C:\Users" -Directory -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -notin @('Public', 'Default', 'Default User', 'All Users') -and
+            $_.Name -notmatch '^(Administrator|Guest)$'
+        }
+
+    foreach ($folder in $userFolders) {
+        # Try to get the user's SID from the registry
+        $profilePath = $folder.FullName
+        $profileItem = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*" -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProfileImagePath -eq $profilePath } |
+            Select-Object -First 1
+
+        if ($profileItem) {
+            $sid = Split-Path $profileItem.PSPath -Leaf
+            $profiles += [PSCustomObject]@{
+                Username    = $folder.Name
+                ProfilePath = $profilePath
+                SID         = $sid
+            }
+        } else {
+            # No SID found, add without it
+            $profiles += [PSCustomObject]@{
+                Username    = $folder.Name
+                ProfilePath = $profilePath
+                SID         = $null
+            }
+        }
+    }
+
+    return $profiles
+}function Test-UserContextInstallation {
+    <#
+    .SYNOPSIS
+        Check if the app is installed in any user's profile via file/registry detection
+    #>
+    param(
+        [string]$PackageId,
+        [string[]]$FilePaths,
+        [string[]]$RegistryKeys
+    )
+
+    $profiles = Get-UserProfiles
+    Write-Log "Checking user-context installation across $($profiles.Count) user profile(s)"
+
+    foreach ($profile in $profiles) {
+        Write-Log "Checking profile: $($profile.Username) ($($profile.ProfilePath))"
+
+        # Check file-based detection
+        foreach ($pathPattern in $FilePaths) {
+            $fullPath = Join-Path $profile.ProfilePath $pathPattern
+            Write-Log "  Checking file path: $fullPath"
+
+            # Handle wildcards in path
+            if ($fullPath -match '\*') {
+                $resolved = Resolve-Path $fullPath -ErrorAction SilentlyContinue
+                if ($resolved) {
+                    Write-Log "  Found: $($resolved.Path)"
+                    return $true
+                }
+            } else {
+                if (Test-Path $fullPath) {
+                    Write-Log "  Found: $fullPath"
+                    return $true
+                }
+            }
+        }
+
+        # Check registry-based detection (load user hive if needed)
+        if ($RegistryKeys.Count -gt 0 -and $profile.SID) {
+            foreach ($regKey in $RegistryKeys) {
+                # Check if hive is already loaded
+                $hivePath = "Registry::HKEY_USERS\$($profile.SID)\$regKey"
+                Write-Log "  Checking registry: $hivePath"
+
+                if (Test-Path $hivePath) {
+                    Write-Log "  Found: $hivePath"
+                    return $true
+                }
+            }
+        }
+    }
+
+    Write-Log "No user-context installation found across all profiles"
+    return $false
+}function Invoke-SystemContextDetection {
+    <#
+    .SYNOPSIS
+        Perform system-context detection using winget list
+    #>
+    param(
+        [string]$PackageId,
+        [string]$RequiredVersion,
+        [string]$Source
+    )
+
+    Write-Log "=== Running SYSTEM context detection via winget list ==="
 
     $wingetPath = Get-WingetPath
     if (-not $wingetPath) {
-        Write-Log "winget.exe not found (no DesktopAppInstaller x64 folder and not in PATH). Returning not detected." -Level Error
-        exit 1
+        Write-Log "winget.exe not found (no DesktopAppInstaller x64 folder and not in PATH)." -Level Warning
+        return $false
     }
 
     Write-Log "Using winget: $wingetPath"
@@ -151,16 +265,13 @@ try {
     $output = & $wingetPath @arguments 2>&1
 
     if (-not $output) {
-        Write-Log "No output from winget list; treating as not installed." -Level Warning
-        exit 1
+        Write-Log "No output from winget list; not installed in system context." -Level Warning
+        return $false
     }
 
     $output | ForEach-Object { Write-Log "winget list: $_" }
 
-    # Note: not attempting JSON parsing here because some winget builds
-    # do not accept an explicit JSON output flag; rely on robust text parsing below.
-
-    # Fallback: sanitize text output (remove control/progress characters) and parse
+    # Sanitize text output (remove control/progress characters) and parse
     $cleanLines = $output | ForEach-Object { ($_ -replace '[\p{Cc}]','').Trim() } |
                   Where-Object { $_ -and ($_ -notmatch '^[-\\|/\s]+$') -and ($_ -notmatch 'MB\s*/') }
 
@@ -169,16 +280,14 @@ try {
     if (-not $RequiredVersion -or $RequiredVersion -eq "Latest") {
         $line = $cleanLines | Select-String -SimpleMatch $PackageId | Select-Object -First 1
         if ($null -eq $line) {
-            Write-Log "PackageId not found in output and RequiredVersion=Latest; not installed." -Level Warning
-            exit 1
+            Write-Log "PackageId not found in output and RequiredVersion=Latest; not installed."
+            return $false
         }
 
         $lineText = $line.ToString()
         Write-Log "Found package line: $lineText"
 
         # Check if there's an "Available" version (indicates update is available)
-        # Format: "Name    Id    Version Available Source"
-        # Split by whitespace and look for version patterns
         $tokens = $lineText -split '\s+' | Where-Object { $_ }
 
         # Try to find two version numbers in the line (installed and available)
@@ -187,24 +296,22 @@ try {
 
         if ($versions.Count -ge 2) {
             Write-Log "Update available: Installed=$($versions[0]), Available=$($versions[1])" -Level Warning
-            exit 1
+            return $false
         }
         elseif ($versions.Count -eq 1) {
-            Write-Log "Package is installed with version $($versions[0]) and is up to date (no Available column)."
-            Write-Output "Detected"
-            exit 0
+            Write-Log "Package is installed with version $($versions[0]) and is up to date."
+            return $true
         }
         else {
             Write-Log "PackageId found but could not parse version information." -Level Warning
-            Write-Output "Detected"
-            exit 0
+            return $true
         }
     }
 
     $matchLine = $cleanLines | Select-String -SimpleMatch $PackageId | Select-Object -First 1
     if ($null -eq $matchLine) {
         Write-Log "No line containing PackageId found in winget output; not installed."
-        exit 1
+        return $false
     }
 
     $lineText = $matchLine.ToString()
@@ -212,7 +319,7 @@ try {
     $verMatch = $verRegex.Match($lineText)
     if (-not $verMatch.Success) {
         Write-Log "Could not parse installed version from: $lineText" -Level Error
-        exit 1
+        return $false
     }
 
     $installedVersion = $verMatch.Value
@@ -223,15 +330,56 @@ try {
 
     if ($comparison -ge 0) {
         if ($comparison -eq 0) {
-            Write-Log "Installed version ($installedVersion) matches required version ($RequiredVersion). Returning detected (0)."
+            Write-Log "Installed version ($installedVersion) matches required version ($RequiredVersion)."
         } else {
-            Write-Log "Installed version ($installedVersion) is newer than required version ($RequiredVersion). Returning detected (0)."
+            Write-Log "Installed version ($installedVersion) is newer than required version ($RequiredVersion)."
         }
-        Write-Output "Detected"
-        exit 0
+        return $true
     }
     else {
-        Write-Log "Installed version ($installedVersion) is older than required version ($RequiredVersion). Returning not detected (1)." -Level Warning
+        Write-Log "Installed version ($installedVersion) is older than required version ($RequiredVersion)." -Level Warning
+        return $false
+    }
+}
+
+# --- Main logic ---
+try {
+    Write-Log "=== Starting detection for PackageId=$PackageId RequiredVersion=$RequiredVersion InstallContext=$InstallContext ==="
+
+    $isDetected = $false
+
+    switch ($InstallContext) {
+        'System' {
+            $isDetected = Invoke-SystemContextDetection -PackageId $PackageId -RequiredVersion $RequiredVersion -Source $Source
+        }
+
+        'User' {
+            if ($UserContextPaths.Count -eq 0 -and $UserContextRegistryKeys.Count -eq 0) {
+                Write-Log "InstallContext=User requires UserContextPaths or UserContextRegistryKeys to be specified." -Level Error
+                exit 1
+            }
+
+            $isDetected = Test-UserContextInstallation -PackageId $PackageId -FilePaths $UserContextPaths -RegistryKeys $UserContextRegistryKeys
+        }
+
+        'Auto' {
+            # Try system detection first
+            $isDetected = Invoke-SystemContextDetection -PackageId $PackageId -RequiredVersion $RequiredVersion -Source $Source
+
+            # If not found and user context detection is configured, try user detection
+            if (-not $isDetected -and ($UserContextPaths.Count -gt 0 -or $UserContextRegistryKeys.Count -gt 0)) {
+                Write-Log "Not found in system context, attempting user context detection..."
+                $isDetected = Test-UserContextInstallation -PackageId $PackageId -FilePaths $UserContextPaths -RegistryKeys $UserContextRegistryKeys
+            }
+        }
+    }
+
+    if ($isDetected) {
+        Write-Log "=== Detection complete: DETECTED ==="
+        Write-Output "Detected"
+        exit 0
+    } else {
+        Write-Log "=== Detection complete: NOT DETECTED ===" -Level Warning
         exit 1
     }
 }
