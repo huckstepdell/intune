@@ -58,7 +58,7 @@ try {
     }
     $LogFileName = $LogFileName -replace '[\\/:*?"<>|]', '_'
     $LogFile = Join-Path $LogFolder $LogFileName
-    
+
     # Test if we can actually write to the log
     "Test" | Out-File -FilePath $LogFile -Append -ErrorAction Stop
     $LoggingEnabled = $true
