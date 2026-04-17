@@ -288,16 +288,29 @@ function Get-UserProfiles {
         $lineText = $line.ToString()
         Write-Log "Found package line: $lineText"
 
-        # Check if there's an "Available" version (indicates update is available)
-        $tokens = $lineText -split '\s+' | Where-Object { $_ }
-
-        # Try to find two version numbers in the line (installed and available)
+        # Try to find version numbers in the line (installed and optional available)
         $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
         $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }
 
         if ($versions.Count -ge 2) {
-            Write-Log "Update available: Installed=$($versions[0]), Available=$($versions[1])" -Level Warning
-            return $false
+            $installedVersion = $versions[0]
+            $availableVersion = $versions[1]
+
+            # Some package names include version text; compare explicit version values before deciding.
+            $latestComparison = Compare-Versions -InstalledVersion $installedVersion -RequiredVersion $availableVersion
+
+            if ($latestComparison -lt 0) {
+                Write-Log "Update available: Installed=$installedVersion, Available=$availableVersion" -Level Warning
+                return $false
+            }
+
+            if ($latestComparison -eq 0) {
+                Write-Log "Package is installed with version $installedVersion and is up to date."
+                return $true
+            }
+
+            Write-Log "Installed version $installedVersion is newer than available version $availableVersion; treating as compliant."
+            return $true
         }
         elseif ($versions.Count -eq 1) {
             Write-Log "Package is installed with version $($versions[0]) and is up to date."
