@@ -299,7 +299,36 @@ try {
 
     Write-Log "winget install exit code: $($installProcess.ExitCode)"
 
+    # For non-standard exit codes, verify installation by checking if package is actually installed
     if (-not (Test-WingetSuccessCode -ExitCode $installProcess.ExitCode)) {
+        $hexCode = "0x{0:X8}" -f ($installProcess.ExitCode -band 0xFFFFFFFF)
+        Write-Log "Non-standard exit code $hexCode received. Verifying installation..." -Level Warning
+
+        # Check if package is now installed
+        $verifyArgs = @(
+            "list",
+            "--id", $PackageId,
+            "--exact",
+            "--accept-source-agreements"
+        )
+
+        $verifyOutput = & $wingetPath @verifyArgs 2>&1
+        $isInstalled = $false
+
+        if ($verifyOutput) {
+            $verifyLine = $verifyOutput | Select-String -SimpleMatch $PackageId | Select-Object -First 1
+            if ($verifyLine) {
+                $isInstalled = $true
+                Write-Log "Verification: Package IS installed despite non-zero exit code."
+            }
+        }
+
+        if ($isInstalled) {
+            Write-Log "Install completed successfully (verified via winget list)." -Level Warning
+            exit 0
+        }
+
+        # Package is genuinely not installed - this is a real error
         $errorHint = Get-WingetErrorHint -ExitCode $installProcess.ExitCode
         throw "winget install failed with exit code $($installProcess.ExitCode) ($errorHint)"
     }

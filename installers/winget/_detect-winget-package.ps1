@@ -42,23 +42,30 @@ $ErrorActionPreference = "Stop"
 
 # --- Logging setup ---
 $LogFolder = "C:\Windows\Logs\Software"
+$LogFile = $null
+$LoggingEnabled = $false
+
+# Try to create log folder and file, but don't fail if we can't
 try {
     if (-not (Test-Path $LogFolder)) {
         New-Item -Path $LogFolder -ItemType Directory -Force -ErrorAction Stop | Out-Null
     }
-}
-catch {
-    # Fallback to temp if we can't write to Windows\Logs
-    $LogFolder = $env:TEMP
-}
 
-if ([string]::IsNullOrWhiteSpace($RequiredVersion) -or $RequiredVersion -eq "Latest") {
-    $LogFileName = "$PackageId-detect.log"
-} else {
-    $LogFileName = "$PackageId-$RequiredVersion-detect.log"
+    if ([string]::IsNullOrWhiteSpace($RequiredVersion) -or $RequiredVersion -eq "Latest") {
+        $LogFileName = "$PackageId-detect.log"
+    } else {
+        $LogFileName = "$PackageId-$RequiredVersion-detect.log"
+    }
+    $LogFileName = $LogFileName -replace '[\\/:*?"<>|]', '_'
+    $LogFile = Join-Path $LogFolder $LogFileName
+    
+    # Test if we can actually write to the log
+    "Test" | Out-File -FilePath $LogFile -Append -ErrorAction Stop
+    $LoggingEnabled = $true
+} catch {
+    # Logging not available (probably permissions issue) - continue without logging
+    $LoggingEnabled = $false
 }
-$LogFileName = $LogFileName -replace '[\\/:*?"<>|]', '_'
-$LogFile = Join-Path $LogFolder $LogFileName
 
 function Write-Log {
     param(
@@ -67,33 +74,36 @@ function Write-Log {
         [string]$Level = 'Info'
     )
 
-    # Map log levels to CMTrace format: 1=Info, 2=Warning, 3=Error
-    $logLevel = switch ($Level) {
-        'Info'    { 1 }
-        'Warning' { 2 }
-        'Error'   { 3 }
-        default   { 1 }
+    # Skip logging if not enabled (permissions issue)
+    if (-not $script:LoggingEnabled) {
+        return
     }
 
-    # Get caller info
-    $callerInfo = (Get-PSCallStack)[1]
-    $component = Split-Path -Leaf $MyInvocation.ScriptName
-
-    # Build timestamp in CMTrace format
-    $time = Get-Date -Format "HH:mm:ss.fff"
-    $date = Get-Date -Format "MM-dd-yyyy"
-    $timeZoneBias = [System.TimeZoneInfo]::Local.GetUtcOffset((Get-Date)).TotalMinutes
-    $timeZoneString = "{0:+000;-000}" -f $timeZoneBias
-
-    # Build CMTrace/OneTrace format log line
-    $logLine = "<![LOG[$Message]LOG]!><time=`"$time$timeZoneString`" date=`"$date`" component=`"$component`" context=`"`" type=`"$logLevel`" thread=`"$PID`" file=`"$component`">"
-
-    # Write to log file
     try {
-        $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8 -ErrorAction Stop
-    }
-    catch {
-        # Silently fail if we can't write logs (will work in Intune as SYSTEM)
+        # Map log levels to CMTrace format: 1=Info, 2=Warning, 3=Error
+        $logLevel = switch ($Level) {
+            'Info'    { 1 }
+            'Warning' { 2 }
+            'Error'   { 3 }
+            default   { 1 }
+        }
+
+        # Component name for CMTrace log entries
+        $component = Split-Path -Leaf $MyInvocation.ScriptName
+
+        # Build timestamp in CMTrace format
+        $time = Get-Date -Format "HH:mm:ss.fff"
+        $date = Get-Date -Format "MM-dd-yyyy"
+        $timeZoneBias = [System.TimeZoneInfo]::Local.GetUtcOffset((Get-Date)).TotalMinutes
+        $timeZoneString = "{0:+000;-000}" -f $timeZoneBias
+
+        # Build CMTrace/OneTrace format log line
+        $logLine = "<![LOG[$Message]LOG]!><time=`"$time$timeZoneString`" date=`"$date`" component=`"$component`" context=`"`" type=`"$logLevel`" thread=`"$PID`" file=`"$component`">"
+
+        # Write to log file
+        $logLine | Out-File -FilePath $script:LogFile -Append -Encoding utf8 -ErrorAction SilentlyContinue
+    } catch {
+        # Silently ignore logging errors
     }
 }
 

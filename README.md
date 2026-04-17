@@ -55,6 +55,7 @@ The repository includes **generic winget scripts** that can install/uninstall **
 
 - **Universal**: Works with any package in the winget repository
 - **Version Management**: Install specific versions or always use latest
+- **Scope Support**: Install for user context or machine context (system-wide)
 - **Intelligent Updates**: Automatically handles version upgrades/downgrades
 - **System Context**: Runs in SYSTEM context for Intune deployments
 - **Comprehensive Logging**: All operations logged to `C:\Windows\Logs\Software\`
@@ -119,9 +120,19 @@ For each application:
    powershell.exe -ExecutionPolicy Bypass -File "install-winget-package.ps1" -PackageId "Git.Git" -Version "Latest"
    ```
 
+   For **user-scoped installations** (VS Code, Python, Discord, etc.), add `-Scope "user"`:
+   ```
+   powershell.exe -ExecutionPolicy Bypass -File "install-winget-package.ps1" -PackageId "Microsoft.VisualStudioCode" -Version "Latest" -Scope "user"
+   ```
+
 3. **Uninstall Command**: Specify the PackageId for this app
    ```
    powershell.exe -ExecutionPolicy Bypass -File "uninstall-winget-package.ps1" -PackageId "Git.Git"
+   ```
+
+   For **user-scoped installations**, add `-Scope "user"`:
+   ```
+   powershell.exe -ExecutionPolicy Bypass -File "uninstall-winget-package.ps1" -PackageId "Microsoft.VisualStudioCode" -Scope "user"
    ```
 
 4. **Detection Method**: Use custom script
@@ -151,6 +162,20 @@ PowerShell      Microsoft.PowerShell  7.4.1
 ```
 
 Use the **Id** column value (e.g., `Git.Git`) as the `PackageId` parameter.
+
+### Troubleshooting User-Scoped Installations
+
+If Intune marks an installation as failed even though the software installs correctly (especially for user-scoped apps like VS Code, Python, Discord):
+
+**This issue has been fixed** - the install script now verifies the package is actually installed when winget returns non-standard exit codes, making it resilient to various user-context installation scenarios.
+
+**Recommended actions:**
+1. **Repackage** with the updated install script
+2. **Optionally add `-Scope "user"`** parameter to install/uninstall commands for user-scoped apps (recommended for clarity)
+3. **Ensure detection scripts are configured** for user context (`InstallContext = "User"`)
+4. **Check logs** in `C:\Windows\Logs\Software\` for detailed information
+
+See [installers/winget/USER-SCOPED-INSTALLS-FIX.md](installers/winget/USER-SCOPED-INSTALLS-FIX.md) for detailed information.
 
 ### Template Structure
 
