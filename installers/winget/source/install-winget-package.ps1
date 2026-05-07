@@ -5,12 +5,14 @@
 .DESCRIPTION
     Logic:
       - If Version = "Latest":
-          * If any version is installed, treat as success (exit 0).
-          * Otherwise, run winget install.
+          * If installed and up to date, exit 0 (success, nothing to do).
+          * If installed but update available, run winget upgrade.
+          * If not installed, run winget install.
       - If Version is a specific version:
-          * If that version is installed, do nothing (exit 0).
-          * If a different version is installed, uninstall it, then install the required version.
-          * If not installed, install the required version.
+          * If that exact version is installed, exit 0 (success).
+          * If an older version is installed, run winget upgrade --version X.
+          * If a newer version is installed (downgrade), uninstall then install.
+          * If not installed, run winget install --version X.
 
     Exit Code Handling:
       - 0: Success
@@ -129,6 +131,41 @@ function Test-WingetSuccessCode {
     return ($ExitCode -eq 0) -or ($hexCode -eq "0x8A15002B")
 }
 
+function Compare-Versions {
+    param(
+        [string]$InstalledVersion,
+        [string]$RequiredVersion
+    )
+
+    # Strip pre-release tags (e.g., "1.2.3-beta" -> "1.2.3")
+    $installedBase = ($InstalledVersion -split '-')[0]
+    $requiredBase  = ($RequiredVersion  -split '-')[0]
+
+    # Use [System.Version] for correct numeric comparison (supports up to 4 components)
+    try {
+        return ([System.Version]$installedBase).CompareTo([System.Version]$requiredBase)
+    }
+    catch { }
+
+    # Fallback: manual component-by-component comparison (for versions with > 4 components)
+    $installedParts = $installedBase -split '\.'
+    $requiredParts  = $requiredBase  -split '\.'
+
+    $maxLength = [Math]::Max($installedParts.Count, $requiredParts.Count)
+    while ($installedParts.Count -lt $maxLength) { $installedParts += "0" }
+    while ($requiredParts.Count  -lt $maxLength) { $requiredParts  += "0" }
+
+    for ($i = 0; $i -lt $maxLength; $i++) {
+        $iv = 0; $rv = 0
+        [void][int]::TryParse($installedParts[$i], [ref]$iv)
+        [void][int]::TryParse($requiredParts[$i],  [ref]$rv)
+        if ($iv -gt $rv) { return  1 }
+        if ($iv -lt $rv) { return -1 }
+    }
+
+    return 0
+}
+
 try {
     Write-Log "Starting Winget install. PackageId=$PackageId Version=$Version"
 
@@ -155,7 +192,11 @@ try {
     $updateAvailable = $false
 
     if ($checkOutput) {
-        $checkLine = $checkOutput | Select-String -SimpleMatch $PackageId | Select-Object -First 1
+        # Strip control/progress characters before parsing (same approach as detect script)
+        $cleanedOutput = $checkOutput | ForEach-Object { ($_ -replace '[\p{Cc}]','').Trim() } |
+                         Where-Object { $_ -and ($_ -notmatch '^[-\\|/\s]+$') -and ($_ -notmatch 'MB\s*/') }
+
+        $checkLine = $cleanedOutput | Select-String -SimpleMatch $PackageId | Select-Object -First 1
         if ($checkLine) {
             $lineText = $checkLine.ToString()
             Write-Log "Pre-check matched line: $lineText"
@@ -212,6 +253,8 @@ try {
 
     # --- Decide what to do based on Version and installedVersion ---
 
+    $useUpgrade = $false
+
     if ($Version -eq "Latest") {
         # Check if update is available
         if ($installedVersion -and -not $updateAvailable) {
@@ -219,8 +262,9 @@ try {
             exit 0
         }
         elseif ($installedVersion -and $updateAvailable) {
-            Write-Log "Package is installed (version=$installedVersion) but update appears available. Proceeding with upgrade."
+            Write-Log "Package is installed (version=$installedVersion) but update available. Will use winget upgrade."
             Write-Log "Note: If upgrade returns 'no applicable update', this may be due to winget metadata caching."
+            $useUpgrade = $true
         }
         else {
             Write-Log "Package not installed; proceeding with install of Latest."
@@ -233,34 +277,42 @@ try {
             exit 0
         }
         elseif ($installedVersion) {
-            Write-Log "Installed version '$installedVersion' does not match required '$Version'. Attempting uninstall before install."
+            $versionComparison = Compare-Versions -InstalledVersion $installedVersion -RequiredVersion $Version
+            if ($versionComparison -lt 0) {
+                # Installed is older than required — upgrade
+                Write-Log "Installed version '$installedVersion' is older than required '$Version'. Will use winget upgrade."
+                $useUpgrade = $true
+            }
+            else {
+                # Installed is newer than required — downgrade (must uninstall first)
+                Write-Log "Installed version '$installedVersion' is newer than required '$Version'. Uninstalling before install."
 
-            $uninstallArgs = @(
-                "uninstall",
-                "--id", $PackageId,
-                "--exact",
-                "--silent",
-                "--accept-package-agreements",
-                "--accept-source-agreements",
-                "--source", "winget"
-            )
+                $uninstallArgs = @(
+                    "uninstall",
+                    "--id", $PackageId,
+                    "--exact",
+                    "--silent",
+                    "--accept-package-agreements",
+                    "--accept-source-agreements",
+                    "--source", "winget"
+                )
 
-            Write-Log "Running uninstall: `"$wingetPath`" $($uninstallArgs -join ' ')"
+                Write-Log "Running uninstall: `"$wingetPath`" $($uninstallArgs -join ' ')"
 
-            $uninstallStdOut = Join-Path $LogFolder "$PackageId-$Version-winget-uninstall-stdout.log"
-            $uninstallStdErr = Join-Path $LogFolder "$PackageId-$Version-winget-uninstall-stderr.log"
+                $uninstallStdOut = Join-Path $LogFolder "$PackageId-$Version-winget-uninstall-stdout.log"
+                $uninstallStdErr = Join-Path $LogFolder "$PackageId-$Version-winget-uninstall-stderr.log"
 
-            $uninstallProcess = Start-Process -FilePath $wingetPath `
-                                              -ArgumentList $uninstallArgs `
-                                              -Wait -PassThru -WindowStyle Hidden `
-                                              -RedirectStandardOutput $uninstallStdOut `
-                                              -RedirectStandardError  $uninstallStdErr
+                $uninstallProcess = Start-Process -FilePath $wingetPath `
+                                                  -ArgumentList $uninstallArgs `
+                                                  -Wait -PassThru -WindowStyle Hidden `
+                                                  -RedirectStandardOutput $uninstallStdOut `
+                                                  -RedirectStandardError  $uninstallStdErr
 
-            Write-Log "winget uninstall exit code: $($uninstallProcess.ExitCode)"
+                Write-Log "winget uninstall exit code: $($uninstallProcess.ExitCode)"
 
-            # Treat "not found" as success; otherwise just log and continue to install
-            if ($uninstallProcess.ExitCode -ne 0) {
-                Write-Log "Uninstall returned non-zero exit code; continuing with install anyway."
+                if ($uninstallProcess.ExitCode -ne 0) {
+                    Write-Log "Uninstall returned non-zero exit code; continuing with install anyway."
+                }
             }
         }
         else {
@@ -268,9 +320,12 @@ try {
         }
     }
 
-    # --- Install (or reinstall) the required version ---
+    # --- Install or upgrade ---
+    $wingetCommand = if ($useUpgrade) { "upgrade" } else { "install" }
+    Write-Log "Using winget command: $wingetCommand"
+
     $installArgs = @(
-        "install",
+        $wingetCommand,
         "--id", $PackageId,
         "--exact",
         "--silent",

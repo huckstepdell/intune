@@ -1,0 +1,7 @@
+{
+  "name": "Logitech Options+",
+  "downloadUrl": "https://download01.logi.com/web/ftp/pub/techsupport/optionsplus/logioptionsplus_installer.exe",
+  "versions": {
+    "latest": "LogitechOptionsPlus\\source\\install-logioptionsplus.ps1"
+  }
+}

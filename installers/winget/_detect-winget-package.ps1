@@ -113,29 +113,33 @@ function Compare-Versions {
         [string]$RequiredVersion
     )
 
-    # Split versions into parts, handling pre-release tags (e.g., "1.2.3-beta")
-    $installedParts = ($InstalledVersion -split '-')[0] -split '\.'
-    $requiredParts = ($RequiredVersion -split '-')[0] -split '\.'
+    # Strip pre-release tags (e.g., "1.2.3-beta" -> "1.2.3")
+    $installedBase = ($InstalledVersion -split '-')[0]
+    $requiredBase  = ($RequiredVersion  -split '-')[0]
 
-    # Pad arrays to same length
+    # Use [System.Version] for correct numeric comparison (supports up to 4 components)
+    try {
+        return ([System.Version]$installedBase).CompareTo([System.Version]$requiredBase)
+    }
+    catch { }
+
+    # Fallback: manual component-by-component comparison (for versions with > 4 components)
+    $installedParts = $installedBase -split '\.'
+    $requiredParts  = $requiredBase  -split '\.'
+
     $maxLength = [Math]::Max($installedParts.Count, $requiredParts.Count)
     while ($installedParts.Count -lt $maxLength) { $installedParts += "0" }
-    while ($requiredParts.Count -lt $maxLength) { $requiredParts += "0" }
+    while ($requiredParts.Count  -lt $maxLength) { $requiredParts  += "0" }
 
-    # Compare each part
     for ($i = 0; $i -lt $maxLength; $i++) {
-        $installedNum = [int]$installedParts[$i]
-        $requiredNum = [int]$requiredParts[$i]
-
-        if ($installedNum -gt $requiredNum) {
-            return 1  # Installed is newer
-        }
-        elseif ($installedNum -lt $requiredNum) {
-            return -1  # Installed is older
-        }
+        $iv = 0; $rv = 0
+        [void][int]::TryParse($installedParts[$i], [ref]$iv)
+        [void][int]::TryParse($requiredParts[$i],  [ref]$rv)
+        if ($iv -gt $rv) { return  1 }
+        if ($iv -lt $rv) { return -1 }
     }
 
-    return 0  # Versions are equal
+    return 0
 }
 
 function Get-WingetPath {
@@ -284,6 +288,7 @@ function Invoke-SystemContextDetection {
     $arguments = @(
         "list",
         "--id", $PackageId,
+        "--exact",
         "--accept-source-agreements"
     )
 
@@ -309,47 +314,43 @@ function Invoke-SystemContextDetection {
     $cleanLines | ForEach-Object { Write-Log "winget cleaned: $_" }
 
     if (-not $RequiredVersion -or $RequiredVersion -eq "Latest") {
+        # Step 1: Confirm the package is installed at all
         $line = $cleanLines | Select-String -SimpleMatch $PackageId | Select-Object -First 1
         if ($null -eq $line) {
-            Write-Log "PackageId not found in output and RequiredVersion=Latest; not installed."
+            Write-Log "Package not found in winget list output; not installed."
             return $false
         }
 
-        $lineText = $line.ToString()
-        Write-Log "Found package line: $lineText"
+        Write-Log "Package is installed. Checking for available updates via --upgrade-available..."
 
-        # Try to find version numbers in the line (installed and optional available)
-        $versionPattern = '\b\d+(?:\.\d+)+(?:-[^\s]+)?\b'
-        $versions = [regex]::Matches($lineText, $versionPattern) | ForEach-Object { $_.Value }
-
-        if ($versions.Count -ge 2) {
-            $installedVersion = $versions[0]
-            $availableVersion = $versions[1]
-
-            # Some package names include version text; compare explicit version values before deciding.
-            $latestComparison = Compare-Versions -InstalledVersion $installedVersion -RequiredVersion $availableVersion
-
-            if ($latestComparison -lt 0) {
-                Write-Log "Update available: Installed=$installedVersion, Available=$availableVersion" -Level Warning
-                return $false
-            }
-
-            if ($latestComparison -eq 0) {
-                Write-Log "Package is installed with version $installedVersion and is up to date."
-                return $true
-            }
-
-            Write-Log "Installed version $installedVersion is newer than available version $availableVersion; treating as compliant."
-            return $true
+        # Step 2: Use --upgrade-available to reliably detect if an update exists.
+        # This avoids depending on version-number parsing from the tabular output,
+        # which can be truncated or formatted differently depending on context.
+        $upgradeCheckArgs = @(
+            "list",
+            "--id", $PackageId,
+            "--exact",
+            "--accept-source-agreements",
+            "--upgrade-available"
+        )
+        if ($Source) {
+            $upgradeCheckArgs += @("--source", $Source)
         }
-        elseif ($versions.Count -eq 1) {
-            Write-Log "Package is installed with version $($versions[0]) and is up to date."
-            return $true
+
+        Write-Log "Running: `"$wingetPath`" $($upgradeCheckArgs -join ' ')"
+        $upgradeOutput = & $wingetPath @upgradeCheckArgs 2>&1
+        $upgradeClean  = $upgradeOutput | ForEach-Object { ($_ -replace '[\p{Cc}]','').Trim() } |
+                         Where-Object { $_ -and ($_ -notmatch '^[-\\|/\s]+$') -and ($_ -notmatch 'MB\s*/') }
+
+        $upgradeLine = $upgradeClean | Select-String -SimpleMatch $PackageId | Select-Object -First 1
+
+        if ($upgradeLine) {
+            Write-Log "Update available for $PackageId (found in --upgrade-available output)." -Level Warning
+            return $false
         }
-        else {
-            Write-Log "PackageId found but could not parse version information." -Level Warning
-            return $true
-        }
+
+        Write-Log "Package is installed and up to date."
+        return $true
     }
 
     $matchLine = $cleanLines | Select-String -SimpleMatch $PackageId | Select-Object -First 1
