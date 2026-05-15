@@ -42,3 +42,4 @@ installers/**/*.exe
 installers/**/*.msi
 installers/fonts/**/*.ttf
 installers/fonts/**/*.otf
+installers/vProFleetServices/source/PairingToken

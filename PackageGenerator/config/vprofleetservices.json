@@ -1,0 +1,8 @@
+{
+  "name": "vPro Fleet Services",
+  "downloadUrl": "",
+  "versions": {
+    "latest": "vProFleetServices\\source\\vProFleetAgent.Installer.msi"
+  },
+  "notes": "Manual package - Place MSI installer and token.txt in source folder before generating. Both files are gitignored."
+}
