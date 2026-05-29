@@ -196,6 +196,29 @@ For applications deployed via winget, you would:
 ✅ **Comprehensive logging** - Full audit trail in `C:\Windows\Logs\Software\`
 ✅ **Template-based** - One detection script template for all winget packages
 
+## Default File Associations
+
+The repository includes an `AppAssociations.xml` file in the root directory for configuring default file associations in Windows.
+
+### Configuration Steps
+
+1. **Edit the XML file** - Customize [AppAssociations.xml](AppAssociations.xml) with your desired file associations
+
+2. **Convert to Base64** - The XML file must be converted to base64 encoding before use in Intune
+   ```powershell
+   $content = Get-Content -Path "AppAssociations.xml" -Raw
+   $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
+   $base64 = [Convert]::ToBase64String($bytes)
+   $base64 | Set-Clipboard
+   ```
+
+3. **Configure in Intune** - Navigate to the following location:
+   - **Settings catalog** → **Application Defaults** → **Default Associations Configuration**
+   - Policy Name: **Win - App Defaults** (or your preferred policy name)
+   - Paste the base64-encoded content into the configuration field
+
+This allows you to centrally manage default application associations for your managed Windows devices.
+
 ## Quick Links
 
 - [PackageGenerator Documentation](PackageGenerator/README.md) - Detailed guide for creating Intune packages
