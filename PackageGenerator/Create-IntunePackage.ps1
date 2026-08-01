@@ -89,7 +89,13 @@ try {
         throw "Version path not found for selection: $selectedVersion"
     }
 
-    $installerPath = Join-Path $InstallerRootPath $relativeInstallerPath
+    # Check if path is already absolute (has drive letter or is rooted)
+    if ([System.IO.Path]::IsPathRooted($relativeInstallerPath)) {
+        $installerPath = $relativeInstallerPath
+    } else {
+        $installerPath = Join-Path $InstallerRootPath $relativeInstallerPath
+    }
+    
     if (-not (Test-Path $installerPath)) {
         throw "Installer not found at: $installerPath"
     }

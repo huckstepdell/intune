@@ -1,0 +1,8 @@
+{
+  "name": "Dell Command | Update Classic",
+  "downloadUrl": "$HOME\\repos\\DellApp-Repository-Manager\\Dell_App_Repository_Manager.ps1 -DellTool 'Dell Command | Update Classic'",
+  "versions": {
+    "5.7.0": "C:\\Dell\\SoftwareRepository\\Dell Command Update Classic\\x86\\5.7.0\\Dell-Command-Update-Application_RXT5N_WIN64_5.7.0_A00.EXE"
+  }
+}
+
