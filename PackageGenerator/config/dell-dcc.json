@@ -2,7 +2,7 @@
   "name": "Dell Command | Configure",
   "downloadUrl": "https://www.dell.com/support/product-details/en-us/product/command-configure/drivers",
   "versions": {
-    "latest": "DCC\\source\\Command_Configure.msi"
+    "5.2.2.292": "DCC\\5.2.2.292\\source\\DCC-Setup.exe"
   }
 }
 

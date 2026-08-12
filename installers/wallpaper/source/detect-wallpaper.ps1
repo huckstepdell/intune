@@ -66,10 +66,15 @@ function Write-Log {
 try {
     Write-Log "=== Starting wallpaper detection ==="
 
-    $regPath = "HKLM:\SOFTWARE\Intune\Wallpaper"
-    
-    if (-not (Test-Path $regPath)) {
-        Write-Log "Registry path not found: $regPath" -Level Warning
+    $regCandidates = @(
+        "HKLM:\SOFTWARE\Intune\Wallpaper",
+        "HKLM:\SOFTWARE\WOW6432Node\Intune\Wallpaper"
+    )
+
+    $regPath = $regCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $regPath) {
+        Write-Log "Registry path not found in either 64-bit or WOW6432Node hive" -Level Warning
         Write-Log "Wallpaper not detected. Returning non-compliant (exit 1)."
         exit 1
     }

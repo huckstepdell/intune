@@ -1,0 +1,2 @@
+DDMA-Setup.exe /s /v"/qn GROUPTOKEN="<Place Group Token Here>" URL="https://device.manage.dell.com" /lv* "c:\windows\logs\software\DDMA_installer.log""
+DDMA-Setup.exe /s /removeonly /v"/qn /lv* c:\windows\logs\software\DDMA_uninstaller.log"

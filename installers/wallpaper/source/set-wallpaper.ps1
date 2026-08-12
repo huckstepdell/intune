@@ -3,7 +3,8 @@
     Set custom wallpaper for Intune deployment
 
 .DESCRIPTION
-    Replaces Windows default wallpaper with custom images.
+    Stages img0.jpg at C:\Windows\Web\Wallpaper\Windows so it can be referenced by the
+    Desktop Wallpaper (User) branding/Administrative Templates policy in Intune.
     Creates a registry entry for Intune detection.
 
 .NOTES
@@ -55,20 +56,37 @@ function Write-Log {
 try {
     Write-Log "=== Starting wallpaper installation ==="
 
-    Write-Log "Taking ownership of default wallpaper files"
-    takeown /f c:\windows\WEB\wallpaper\Windows\img0.jpg
-    takeown /f C:\Windows\Web\4K\Wallpaper\Windows\*.*
+    $wallpaperRoot = "C:\Windows\Web\Wallpaper\Windows"
+    $img0Destination = Join-Path $wallpaperRoot "img0.jpg"
+    $img0Source = Join-Path $PSScriptRoot "img0.jpg"
+
+    if (-not (Test-Path $wallpaperRoot)) {
+        Write-Log "Creating wallpaper directory: $wallpaperRoot"
+        New-Item -Path $wallpaperRoot -ItemType Directory -Force | Out-Null
+    }
+
+    Write-Log "Taking ownership of default wallpaper file"
+    if (Test-Path $img0Destination) {
+        takeown /f $img0Destination | Out-Null
+    }
 
     Write-Log "Granting System permissions"
-    icacls c:\windows\WEB\wallpaper\Windows\img0.jpg /Grant 'System:(F)'
-    icacls C:\Windows\Web\4K\Wallpaper\Windows\*.* /Grant 'System:(F)'
+    if (Test-Path $img0Destination) {
+        icacls $img0Destination /Grant 'System:(F)' | Out-Null
+    }
 
-    Write-Log "Removing default wallpaper files"
-    Remove-Item c:\windows\WEB\wallpaper\Windows\img0.jpg
-    Remove-Item C:\Windows\Web\4K\Wallpaper\Windows\*.*
+    Write-Log "Removing default wallpaper file"
+    if (Test-Path $img0Destination) {
+        Remove-Item $img0Destination -Force
+    }
 
     Write-Log "Copying custom wallpaper from script directory"
-    Copy-Item "$PSScriptRoot\img0.jpg" "c:\windows\WEB\wallpaper\Windows\img0.jpg" -Force
+    if (-not (Test-Path $img0Source)) {
+        throw "Cannot find source wallpaper file: $img0Source"
+    }
+
+    Copy-Item $img0Source $img0Destination -Force
+
     Write-Log "Wallpaper copied successfully"
 
     # --- Create registry entry for detection ---

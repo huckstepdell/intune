@@ -2,7 +2,7 @@
   "name": "Dell Device Management Agent",
   "downloadUrl": "https://device.manage.dell.com/deployment/agents",
   "versions": {
-    "latest": "DDMA\\source\\DellDeviceManagementAgent.SubAgent_26.05.0.1066.exe"
+    "26.07.0.87": "DDMA\\26.07.0.87\\source\\DDMA-Setup.exe"
   }
 }
 

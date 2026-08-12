@@ -1,0 +1,2 @@
+DCU_Setup.exe /passthrough /s /v"/qn /l*v c:\windows\logs\software\DCU_Install.log"
+DCU_Setup.exe /passthrough /x /s /v"/qn /l*v c:\windows\logs\software\DCU_Uninstall.log"

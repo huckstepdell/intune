@@ -1,0 +1,2 @@
+DCC-Setup.exe /passthrough /s /v"/qn /l*v c:\windows\logs\software\DCC_Install.log"
+DCC-Setup.exe /passthrough /x /s /v"/qn /l*v c:\windows\logs\software\DCC_Uninstall.log"

@@ -1,0 +1,2 @@
+DDPM-Setup.exe /silent  /NetworkKVM=Disable /AutoUpdate=false  /TelemetryConsent=true /CreateDebugLog="C:\Windows\Logs\Software\DDPM-Install.log”
+DDPM-Setup.exe /uninst

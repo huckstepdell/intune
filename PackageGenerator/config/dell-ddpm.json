@@ -2,7 +2,7 @@
   "name": "Dell Display and Peripheral Manager",
   "downloadUrl": "https://device.manage.dell.com/deployment/agents",
   "versions": {
-    "latest": "DDPM\\source\\DDPM-Setup_2.2.2.8.exe"
+    "2.3.0.17": "DDPM\\2.3.0.17\\source\\DDPM-Setup.exe"
   }
 }
 
