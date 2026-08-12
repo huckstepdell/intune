@@ -85,7 +85,7 @@ try {
     try {
         $version = Get-ItemProperty -Path $regPath -Name "Version" -ErrorAction Stop
         Write-Log "Found Version: $($version.Version)"
-        
+
         # Optionally check for InstalledDate
         try {
             $installedDate = Get-ItemProperty -Path $regPath -Name "InstalledDate" -ErrorAction SilentlyContinue
