@@ -22,12 +22,17 @@ else {
 
 Write-Host "Get-WindowsAutopilotInfo is installed and ready." -ForegroundColor Green
 Write-Host ""
+$GroupTag = Read-Host "Enter GroupTag (default: HybridDefault)"
+if ([string]::IsNullOrWhiteSpace($GroupTag)) {
+    $GroupTag = "HybridDefault"
+}
+
 Write-Host "Examples:"
 Write-Host "Export hash to CSV:"
 Write-Host "  Get-WindowsAutopilotInfo -OutputFile C:\HWID.csv"
 Write-Host ""
 Write-Host "Upload directly to Intune:"
-Write-Host "  Get-WindowsAutopilotInfo -Online"
+Write-Host "  Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag"
 Write-Host ""
 Write-Host "Upload and wait for profile assignment during OOBE:"
-Write-Host "  Get-WindowsAutopilotInfo -Online -Assign"
+Write-Host "  Get-WindowsAutopilotInfo -Online -GroupTag $GroupTag -Assign"
