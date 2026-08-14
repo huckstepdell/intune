@@ -1,0 +1,7 @@
+{
+  "name": "Tailscale",
+  "downloadUrl": "https://pkgs.tailscale.com/stable/#windows",
+  "versions": {
+    "1.102.2": "tailscale\\1.102.2\\source\\tailscale-setup.msi"
+  }
+}
