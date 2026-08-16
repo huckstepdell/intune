@@ -1,0 +1,7 @@
+{
+  "name": "Google Drive",
+  "downloadUrl": "https://dl.google.com/drive-file-stream/GoogleDriveSetup.exe",
+  "versions": {
+    "latest": "GoogleDrive\\source\\install-google-drive.ps1"
+  }
+}

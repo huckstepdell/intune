@@ -1,0 +1,7 @@
+{
+  "name": "Google Chrome",
+  "downloadUrl": "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi",
+  "versions": {
+    "latest": "chrome\\source\\googlechromestandaloneenterprise64.msi"
+  }
+}
