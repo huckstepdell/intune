@@ -67,8 +67,8 @@ try {
     Write-Log "=== Starting wallpaper detection ==="
 
     $regCandidates = @(
-        "HKLM:\SOFTWARE\Intune\Wallpaper",
-        "HKLM:\SOFTWARE\WOW6432Node\Intune\Wallpaper"
+        "HKLM:\SOFTWARE\WOW6432Node\Intune\Wallpaper",
+        "HKLM:\SOFTWARE\Intune\Wallpaper"
     )
 
     $regPath = $regCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -81,20 +81,17 @@ try {
 
     Write-Log "Registry path exists: $regPath"
 
+    $requiredVersion = "26.08.17.2"
+
     # Check for Version property
     try {
         $version = Get-ItemProperty -Path $regPath -Name "Version" -ErrorAction Stop
         Write-Log "Found Version: $($version.Version)"
 
-        # Optionally check for InstalledDate
-        try {
-            $installedDate = Get-ItemProperty -Path $regPath -Name "InstalledDate" -ErrorAction SilentlyContinue
-            if ($installedDate) {
-                Write-Log "Installed Date: $($installedDate.InstalledDate)"
-            }
-        }
-        catch {
-            Write-Log "InstalledDate not found (optional)" -Level Info
+        if ($version.Version -ne $requiredVersion) {
+            Write-Log "Version mismatch: found $($version.Version), required $requiredVersion" -Level Warning
+            Write-Log "Wallpaper not detected. Returning non-compliant (exit 1)."
+            exit 1
         }
 
         Write-Log "Wallpaper detected. Returning compliant (exit 0)."
