@@ -1,0 +1,9 @@
+{
+  "name": "ASP.NET Core Runtime",
+  "downloadUrl": "https://dotnet.microsoft.com/en-us/download/dotnet",
+  "versions": {
+    "10.0.11": "Microsoft\\DotNetAspNetCoreRuntime\\10.0.11\\source\\aspnetcore-runtime-win-x64.exe",
+    "9.0.19": "Microsoft\\DotNetAspNetCoreRuntime\\9.0.19\\source\\aspnetcore-runtime-win-x64.exe",
+    "8.0.30": "Microsoft\\DotNetAspNetCoreRuntime\\8.0.30\\source\\aspnetcore-runtime-win-x64.exe"
+  }
+}
