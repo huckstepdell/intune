@@ -1,0 +1,7 @@
+{
+  "name": "Dell Optimizer",
+  "downloadUrl": "https://www.dell.com/support/product-details/en-us/product/dell-optimizer/drivers",
+  "versions": {
+    "6.3.4.0": "DO\\6.3.4.0\\source\\Dell-Optimizer.exe"
+  }
+}
