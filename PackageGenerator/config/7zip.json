@@ -1,0 +1,7 @@
+{
+  "name": "7-Zip",
+  "downloadUrl": "https://www.7-zip.org/download.html",
+  "versions": {
+    "26.02": "7zip\\26.02\\source\\7z-install.msi"
+  }
+}

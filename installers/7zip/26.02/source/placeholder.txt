@@ -1,0 +1,1 @@
+Place the 7-Zip 26.02 installer (e.g. 7z2602-x64.exe) in this folder.

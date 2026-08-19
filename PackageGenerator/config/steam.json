@@ -1,0 +1,8 @@
+{
+  "name": "Steam",
+  "downloadUrl": "https://store.steampowered.com/about/",
+  "versions": {
+    "latest": "steam\\source\\SteamSetup.exe"
+  },
+  "notes": "SteamSetup.exe is only a bootstrap that self-updates. Detection checks for any installed version rather than a specific one."
+}
