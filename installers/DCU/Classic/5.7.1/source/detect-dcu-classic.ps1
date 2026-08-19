@@ -3,8 +3,9 @@
     Detection script for Dell Command | Update Classic
 
 .DESCRIPTION
-    Checks the uninstall registry to see if Dell Command | Update Classic is installed
-    and whether it is at least version 5.7.1. This avoids depending on a hard-coded GUID.
+    Checks the Dell Update Service version registry value and verifies it is at
+    least version 5.7.1.558. Dell Command | Update does not reliably create an
+    uninstall registry entry.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\detect-dcu-classic.ps1
@@ -20,7 +21,9 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-$requiredVersion = [version]'5.7.1'
+$requiredVersion = [version]'5.7.1.558'
+$versionRegistryPath = 'HKLM:\SOFTWARE\Dell\UpdateService\Service'
+$versionRegistryValue = 'LastServiceStartVersion'
 $logFolder = 'C:\Windows\Logs\Software'
 
 try {
@@ -59,7 +62,16 @@ function Write-Log {
         $logLine | Out-File -FilePath $logFile -Append -Encoding utf8 -ErrorAction Stop
     }
     catch {
-        # Intune runs as SYSTEM; this is best-effort only.
+        # Local, non-elevated runs can be denied write access under C:\Windows\Logs; fall back to %TEMP% once.
+        if ($script:logFile -ne (Join-Path $env:TEMP 'dcu-classic-detect.log')) {
+            $script:logFile = Join-Path $env:TEMP 'dcu-classic-detect.log'
+            try {
+                $logLine | Out-File -FilePath $script:logFile -Append -Encoding utf8 -ErrorAction Stop
+            }
+            catch {
+                # Best-effort only; nowhere left to fall back to.
+            }
+        }
     }
 }
 
@@ -67,53 +79,20 @@ try {
     Write-Log "=== Starting Dell Command | Update Classic detection ==="
     Write-Log "Required version: $requiredVersion"
 
-    $paths = @(
-        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-    )
+    $installedVersionValue = ([string](Get-ItemPropertyValue -Path $versionRegistryPath -Name $versionRegistryValue -ErrorAction Stop)).Trim()
+    Write-Log "Found ${versionRegistryValue}: $installedVersionValue"
 
-    foreach ($path in $paths) {
-        Write-Log "Checking registry path: $path"
-
-        try {
-            $items = Get-ChildItem -Path $path -ErrorAction Stop
+    try {
+        $installedVersion = [version]$installedVersionValue
+        if ($installedVersion -ge $requiredVersion) {
+            Write-Log "Detected compliant version: $installedVersion"
+            Write-Output "Detected"
+            exit 0
         }
-        catch {
-            Write-Log "Path not found or inaccessible: $path" -Level Warning
-            continue
-        }
-
-        foreach ($item in $items) {
-            try {
-                $props = Get-ItemProperty -Path $item.PSPath -ErrorAction Stop
-            }
-            catch {
-                continue
-            }
-
-            $displayName = [string]$props.DisplayName
-            $displayVersion = [string]$props.DisplayVersion
-
-            if ($displayName -match 'Dell Command \| Update' -and $displayVersion) {
-                Write-Log "Found product: $displayName"
-                Write-Log "DisplayVersion: $displayVersion"
-
-                try {
-                    $installedVersion = [version]$displayVersion
-                    if ($installedVersion -ge $requiredVersion) {
-                        Write-Log "Detected compliant version: $installedVersion"
-                        Write-Output "Detected"
-                        exit 0
-                    }
-                    else {
-                        Write-Log "Detected older version: $installedVersion; required >= $requiredVersion" -Level Warning
-                    }
-                }
-                catch {
-                    Write-Log "Unable to parse version $displayVersion as [version]" -Level Warning
-                }
-            }
-        }
+        Write-Log "Detected older version: $installedVersion; required >= $requiredVersion" -Level Warning
+    }
+    catch {
+        Write-Log "Unable to parse $versionRegistryValue value $installedVersionValue as [version]" -Level Warning
     }
 
     Write-Log "Dell Command | Update Classic not detected or not compliant" -Level Warning
