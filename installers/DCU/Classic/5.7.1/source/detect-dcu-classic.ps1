@@ -79,7 +79,29 @@ try {
     Write-Log "=== Starting Dell Command | Update Classic detection ==="
     Write-Log "Required version: $requiredVersion"
 
-    $installedVersionValue = ([string](Get-ItemPropertyValue -Path $versionRegistryPath -Name $versionRegistryValue -ErrorAction Stop)).Trim()
+    $registryCandidates = @(
+        $versionRegistryPath,
+        'HKLM:\SOFTWARE\WOW6432Node\Dell\UpdateService\Service'
+    )
+
+    $existingPath = $registryCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $existingPath) {
+        Write-Log "Registry path not found in either hive: $($registryCandidates -join ', ')" -Level Warning
+        Write-Log "Dell Command | Update Classic not detected" -Level Warning
+        exit 1
+    }
+
+    Write-Log "Registry path exists: $existingPath"
+
+    $installedVersionValue = Get-ItemPropertyValue -Path $existingPath -Name $versionRegistryValue -ErrorAction SilentlyContinue
+    if (-not $installedVersionValue) {
+        Write-Log "Value '$versionRegistryValue' not found under $existingPath" -Level Warning
+        Write-Log "Dell Command | Update Classic not detected" -Level Warning
+        exit 1
+    }
+
+    $installedVersionValue = ([string]$installedVersionValue).Trim()
     Write-Log "Found ${versionRegistryValue}: $installedVersionValue"
 
     try {

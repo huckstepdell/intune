@@ -1,0 +1,7 @@
+{
+  "name": "NVIDIA Sync",
+  "downloadUrl": "https://CHANGE.ME/NvidiaSyncSetup.exe",
+  "versions": {
+    "latest": "NvidiaSync\\source\\NvidiaSyncSetup.exe"
+  }
+}

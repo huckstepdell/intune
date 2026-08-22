@@ -1,0 +1,7 @@
+{
+  "name": "Python Default Venv",
+  "downloadUrl": "",
+  "versions": {
+    "latest": "PythonVenv\\source\\install-python-venv.ps1"
+  }
+}
