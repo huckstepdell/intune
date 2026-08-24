@@ -87,7 +87,7 @@ try {
         New-Item -Path $regPath -Force | Out-Null
     }
 
-    $version = "26.08.17.2"
+    $version = "26.08.24.2"
     $installedDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
     Write-Log "Setting registry values: Version=$version, InstalledDate=$installedDate"

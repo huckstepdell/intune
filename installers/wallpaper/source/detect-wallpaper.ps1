@@ -81,7 +81,7 @@ try {
 
     Write-Log "Registry path exists: $regPath"
 
-    $requiredVersion = "26.08.17.2"
+    $requiredVersion = "26.08.24.2"
 
     # Check for Version property
     try {
