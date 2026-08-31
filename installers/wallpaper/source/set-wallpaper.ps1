@@ -12,6 +12,12 @@
     Registry detection: HKLM:\SOFTWARE\Intune\Wallpaper
 #>
 
+param(
+    [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [string]$Version = "1"
+)
+
 $ErrorActionPreference = "Stop"
 
 # --- Logging setup ---
@@ -87,11 +93,10 @@ try {
         New-Item -Path $regPath -Force | Out-Null
     }
 
-    $version = "26.08.24.2"
     $installedDate = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
-    Write-Log "Setting registry values: Version=$version, InstalledDate=$installedDate"
-    New-ItemProperty -Path $regPath -Name "Version" -Value $version -PropertyType String -Force | Out-Null
+    Write-Log "Setting registry values: Version=$Version, InstalledDate=$installedDate"
+    New-ItemProperty -Path $regPath -Name "Version" -Value $Version -PropertyType String -Force | Out-Null
     New-ItemProperty -Path $regPath -Name "InstalledDate" -Value $installedDate -PropertyType String -Force | Out-Null
 
     Write-Log "=== Wallpaper installation completed successfully ==="
