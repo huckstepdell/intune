@@ -8,7 +8,11 @@
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [string]$Ssid = 'REPLACE-WITH-SSID'
+)
 
 $ErrorActionPreference = 'Stop'
 $registryPath = 'HKLM:\SOFTWARE\Intune\NetworkSsidPrivate'
@@ -56,6 +60,11 @@ try {
     if ([string]::IsNullOrWhiteSpace($ssid)) {
         Write-Log 'The configured SSID marker is empty.' -Level Warning
         throw 'The configured SSID marker is empty.'
+    }
+
+    if ($Ssid -and $ssid -ne $Ssid) {
+        Write-Log "Configured SSID '$ssid' does not match required SSID '$Ssid'." -Level Warning
+        throw "Configured SSID '$ssid' does not match required SSID '$Ssid'."
     }
 
     Write-Log "Detected configured private network SSID '$ssid'."

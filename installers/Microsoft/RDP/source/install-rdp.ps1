@@ -100,6 +100,7 @@ try {
     # Registry path for Terminal Server
     $terminalServerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server"
     $rdpPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp"
+    $terminalServerPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services"
 
     # Check if registry path exists
     if (-not (Test-Path $terminalServerPath)) {
@@ -113,12 +114,16 @@ try {
         # Disable RDP (fDenyTSConnections = 1 means RDP is disabled)
         Write-Log "Disabling RDP connections..."
         Set-ItemProperty -Path $terminalServerPath -Name "fDenyTSConnections" -Value 1 -Type DWord -ErrorAction Stop
+        New-Item -Path $terminalServerPolicyPath -Force | Out-Null
+        Set-ItemProperty -Path $terminalServerPolicyPath -Name "fDenyTSConnections" -Value 1 -Type DWord -ErrorAction Stop
         Write-Log "Set fDenyTSConnections = 1 (RDP disabled)"
     }
     else {
         # Enable RDP (fDenyTSConnections = 0 means RDP is enabled)
         Write-Log "Enabling RDP connections..."
         Set-ItemProperty -Path $terminalServerPath -Name "fDenyTSConnections" -Value 0 -Type DWord -ErrorAction Stop
+        New-Item -Path $terminalServerPolicyPath -Force | Out-Null
+        Set-ItemProperty -Path $terminalServerPolicyPath -Name "fDenyTSConnections" -Value 0 -Type DWord -ErrorAction Stop
         Write-Log "Set fDenyTSConnections = 0 (RDP enabled)"
 
         # Configure RDP security settings (optional but recommended)
@@ -138,21 +143,22 @@ try {
 
     # Verify RDP status
     $rdpEnabled = (Get-ItemProperty -Path $terminalServerPath -Name "fDenyTSConnections" -ErrorAction Stop).fDenyTSConnections
+    $rdpPolicyEnabled = (Get-ItemProperty -Path $terminalServerPolicyPath -Name "fDenyTSConnections" -ErrorAction Stop).fDenyTSConnections
 
     if ($isDisable) {
-        if ($rdpEnabled -eq 1) {
-            Write-Log "RDP is now disabled (fDenyTSConnections = 1)"
+        if ($rdpEnabled -eq 1 -and $rdpPolicyEnabled -eq 1) {
+            Write-Log "RDP is now disabled in the system and policy registry settings."
         } else {
-            Write-Log "Warning: RDP may not be properly disabled (fDenyTSConnections = $rdpEnabled)" -Level Warning
+            Write-Log "Warning: RDP may not be properly disabled (system=$rdpEnabled, policy=$rdpPolicyEnabled)" -Level Warning
         }
         Write-Log "=== RDP disablement completed ==="
         exit 0
     }
     else {
-        if ($rdpEnabled -eq 0) {
-            Write-Log "RDP is now enabled (fDenyTSConnections = 0)"
+        if ($rdpEnabled -eq 0 -and $rdpPolicyEnabled -eq 0) {
+            Write-Log "RDP is now enabled in the system and policy registry settings."
         } else {
-            Write-Log "Warning: RDP may not be properly enabled (fDenyTSConnections = $rdpEnabled)" -Level Warning
+            Write-Log "Warning: RDP may not be properly enabled (system=$rdpEnabled, policy=$rdpPolicyEnabled)" -Level Warning
         }
         Write-Log "=== RDP enablement completed successfully ==="
         exit 0

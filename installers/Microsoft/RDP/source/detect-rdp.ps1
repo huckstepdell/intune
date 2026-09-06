@@ -79,6 +79,7 @@ try {
 
     # Registry path for Terminal Server
     $terminalServerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server"
+    $terminalServerPolicyPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services"
 
     # Check if registry path exists
     if (-not (Test-Path $terminalServerPath)) {
@@ -91,8 +92,22 @@ try {
 
     # Get fDenyTSConnections value
     $fDenyTSConnections = (Get-ItemProperty -Path $terminalServerPath -Name "fDenyTSConnections" -ErrorAction Stop).fDenyTSConnections
+    $policyFdenyTSConnections = $null
+
+    if (Test-Path $terminalServerPolicyPath) {
+        $policyFdenyTSConnections = (Get-ItemProperty -Path $terminalServerPolicyPath -Name "fDenyTSConnections" -ErrorAction SilentlyContinue).fDenyTSConnections
+    }
 
     Write-Log "fDenyTSConnections = $fDenyTSConnections (0=enabled, 1=disabled)"
+
+    if ($policyFdenyTSConnections -ne $null) {
+        Write-Log "Policy fDenyTSConnections = $policyFdenyTSConnections (0=enabled, 1=disabled)"
+
+        if ($policyFdenyTSConnections -ne 0) {
+            Write-Log "RDP is disabled by policy." -Level Warning
+            exit 1
+        }
+    }
 
     if ($fDenyTSConnections -eq 0) {
         Write-Log "RDP is enabled"
