@@ -1,1 +1,0 @@
-This folder will contain the .intunewin package file after running the package generator.

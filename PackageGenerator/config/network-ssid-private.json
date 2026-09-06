@@ -1,0 +1,7 @@
+{
+  "name": "Set Network SSID Private",
+  "downloadUrl": "",
+  "versions": {
+    "latest": "NetworkSsidPrivate\\source\\Set-NetworkSsidPrivate.ps1"
+  }
+}

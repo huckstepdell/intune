@@ -1,1 +1,0 @@
-Place SteamSetup.exe (the Steam bootstrap installer) in this folder.

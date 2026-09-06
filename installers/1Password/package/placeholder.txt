@@ -1,3 +1,0 @@
-This folder contains the packaged .intunewin file.
-
-Run Create-IntunePackage.ps1 from the PackageGenerator folder to create the package.
