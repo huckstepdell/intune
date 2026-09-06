@@ -1,0 +1,7 @@
+{
+  "name": "RDP Enable",
+  "downloadUrl": "",
+  "versions": {
+    "1.0": "Microsoft\\RDP\\source\\install-rdp.ps1"
+  }
+}

@@ -71,7 +71,7 @@ try {
     Write-Log "=== Starting .NET Desktop Runtime $majorVersion.x detection ==="
     Write-Log "Required version: $requiredVersion"
 
-    $output = & dotnet --list-runtimes 2>$null
+    $output = & 'c:\program files\dotnet\dotnet.exe' --list-runtimes 2>$null
 
     if (-not $output) {
         Write-Log "'dotnet --list-runtimes' returned no output; dotnet host may not be installed" -Level Warning
