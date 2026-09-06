@@ -63,7 +63,13 @@ function Write-Log {
     try {
         $logLine | Out-File -FilePath $LogFile -Append -Encoding utf8 -ErrorAction Stop
     } catch {
-        Write-Host "Warning: Could not write RDP detection log: $($_.Exception.Message)"
+        $fallbackLogFile = Join-Path $env:TEMP "detect-rdp.log"
+        try {
+            $logLine | Out-File -FilePath $fallbackLogFile -Append -Encoding utf8 -ErrorAction Stop
+            $script:LogFile = $fallbackLogFile
+        } catch {
+            Write-Host "Warning: Could not write RDP detection log: $($_.Exception.Message)"
+        }
     }
 }
 
