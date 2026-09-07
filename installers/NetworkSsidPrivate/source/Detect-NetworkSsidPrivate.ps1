@@ -15,7 +15,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$registryPath = 'HKLM:\SOFTWARE\Intune\NetworkSsidPrivate'
+$registryPaths = @(
+    'HKLM:\SOFTWARE\WOW6432Node\Intune\NetworkSsidPrivate',
+    'HKLM:\SOFTWARE\Intune\NetworkSsidPrivate'
+)
 
 $logFolder = 'C:\Windows\Logs\Software'
 try {
@@ -55,6 +58,13 @@ function Write-Log {
 
 try {
     Write-Log 'Starting Network SSID Private detection.'
+    $registryPath = $registryPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $registryPath) {
+        throw 'The Network SSID Private detection marker was not found in either registry view.'
+    }
+
+    Write-Log "Using detection registry path '$registryPath'."
     $ssid = Get-ItemPropertyValue -Path $registryPath -Name 'Ssid'
 
     if ([string]::IsNullOrWhiteSpace($ssid)) {
