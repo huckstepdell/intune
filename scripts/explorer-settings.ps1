@@ -1,3 +1,4 @@
+# 1.0.1
 $registryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
 
 # Create the key if it doesn't exist
