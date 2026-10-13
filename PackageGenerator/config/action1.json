@@ -1,0 +1,7 @@
+{
+  "name": "Action1",
+  "downloadUrl": "https://www.action1.com/download",
+  "versions": {
+    "6.0.664.1": "Action1\\6.0.664.1\\source\\Action1.msi"
+  }
+}
