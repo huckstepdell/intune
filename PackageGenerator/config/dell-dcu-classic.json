@@ -2,6 +2,7 @@
   "name": "Dell Command | Update Classic",
   "downloadUrl": "https://www.dell.com/support/product-details/en-us/product/command-update/drivers",
   "versions": {
+    "5.7.2": "DCU\\Classic\\5.7.2\\source\\DCU_Setup.exe",
     "5.7.1": "DCU\\Classic\\5.7.1\\source\\DCU_Setup.exe"
   }
 }
