@@ -22,9 +22,9 @@ else {
 
 Write-Host "Get-WindowsAutopilotInfo is installed and ready." -ForegroundColor Green
 Write-Host ""
-$GroupTag = Read-Host "Enter GroupTag (default: HybridDefault)"
+$GroupTag = Read-Host "Enter GroupTag (default: Hybrid)"
 if ([string]::IsNullOrWhiteSpace($GroupTag)) {
-    $GroupTag = "HybridDefault"
+    $GroupTag = "Hybrid"
 }
 
 Write-Host "Examples:"
